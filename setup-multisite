@@ -1,8 +1,35 @@
 #!/usr/bin/env bash
 
+
+# if db_user is given, we assume db_host is given and db_pass is given
+
+# TODO
+# ===========
+# [  todo!  ] prereqs - check for all needed commands, prompt to install? i.e. mysql
+# [  todo!  ] prereqs - check for needed files, prompt to install? i.e. wordpress dir
+# [  todo!  ] inputs - need to separate 'name' from 'db_user'
+# [  todo!  ] destroy - pull db configs from file to destroy
+
+
+
+# [  done!  ]
+
+
+
+
+
+
+
+
+
+
+
 readonly VERSION="1.0.0"
 readonly ERR_UNK_OPT="64"
 readonly ERR_NO_FQDN="65"
+#readonly DB_USER_NO_="66"
+#readonly DB
+
 
 usage() {
 cat <<EOF
@@ -30,57 +57,55 @@ EOF
 }
 
 checkforexistingsetup() {
-if [ -f $CONFIG_FILE ] ; then
-    echo WARNING: $CONFIG_FILE exists!
-    exit 1
-fi
-
-# Generate a random password without Perl
-MATRIX="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-if [ ! $MYSQLUSER ]; then
-    LENGTH="8"
+    if [ -f $CONFIG_FILE ] ; then
+        echo WARNING: $CONFIG_FILE exists!
+        exit 1
+    fi
+    
+    # Generate a random password without Perl
+    MATRIX="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    if [ ! $MYSQLUSER ]; then
+        LENGTH="8"
+        while [ "${n:=1}" -le "$LENGTH" ]
+        do
+            DB_PASSWORD="$DB_PASSWORD${MATRIX:$(($RANDOM%${#MATRIX})):1}"
+            let n+=1
+        done
+        DB_USER=$NAME
+    else
+        DB_USER=$MYSQLUSER
+        echo "Enter MySQL password for user $DB_USER."
+        read -p "> " DB_PASSWORD
+    fi
+    
+    LENGTH="50"
     while [ "${n:=1}" -le "$LENGTH" ]
     do
-        DB_PASSWORD="$DB_PASSWORD${MATRIX:$(($RANDOM%${#MATRIX})):1}"
+        SECRET_KEY="$SECRET_KEY${MATRIX:$(($RANDOM%${#MATRIX})):1}"
         let n+=1
     done
-    DB_USER=$NAME
-else
-    DB_USER=$MYSQLUSER
-    echo "Enter MySQL password for user $DB_USER."
-    read -p "> " DB_PASSWORD
-fi
-
-LENGTH="50"
-while [ "${n:=1}" -le "$LENGTH" ]
-do
-    SECRET_KEY="$SECRET_KEY${MATRIX:$(($RANDOM%${#MATRIX})):1}"
-    let n+=1
-done
-
-if [ ! $DB_DB ]; then
-    DB_NAME=$NAME
-else
-    DB_NAME=$DB_DB
-fi
-
-# Write the config file for wordpress
-(umask 0027;
-cat > $CONFIG_FILE << EOF
-<?php
-# Created by $0 $@
-define('DB_NAME', '$DB_NAME');
-define('DB_USER', '$DB_USER');
-define('DB_PASSWORD', '$DB_PASSWORD');
-define('DB_HOST', '$DB_HOST');
-define('SECRET_KEY', '$SECRET_KEY');
-define('WP_CONTENT_DIR', '$CONTENT');
-define('FS_METHOD', 'direct');
-?>
-EOF
-)
-chgrp www-data "${CONFIG_FILE}"
-echo $CONFIG_FILE written
+    
+    if [ ! $DB_DB ]; then
+        DB_NAME=$NAME
+    else
+        DB_NAME=$DB_DB
+    fi
+    
+    # Write the config file for wordpress
+    printf "<?php\n" >> $CONFIG_FILE
+    printf "# Created by $0 $@\n" >> $CONFIG_FILE
+    printf "define('DB_NAME', '$DB_NAME');\n" >> $CONFIG_FILE
+    printf "define('DB_USER', '$DB_USER');\n" >> $CONFIG_FILE
+    printf "define('DB_PASSWORD', '$DB_PASSWORD');\n" >> $CONFIG_FILE
+    printf "define('DB_HOST', '$DB_HOST');\n" >> $CONFIG_FILE
+    printf "define('SECRET_KEY', '$SECRET_KEY');\n" >> $CONFIG_FILE
+    printf "define('WP_CONTENT_DIR', '$CONTENT');\n" >> $CONFIG_FILE
+    printf "define('FS_METHOD', 'direct');\n" >> $CONFIG_FILE
+    printf "?>\n" >> $CONFIG_FILE
+    # Set permissions
+    chmod g+r "${CONFIG_FILE}"
+    chgrp www-data "${CONFIG_FILE}"
+    echo $CONFIG_FILE written
 }
 
 create() {
@@ -117,9 +142,9 @@ if [ ! -e /etc/mysql/debian.cnf ]; then
 fi
 echo Destroying $NAME
 prompt
-mysql /etc/mysql/debian.cnf <<EOF
+mysql --defaults-extra-file=/etc/mysql/debian.cnf <<EOF
 CONNECT mysql;
-delete from user where user='$NAME';
+DELETE FROM user where user='$NAME';
 DELETE FROM db WHERE User = '$NAME';
 DELETE FROM tables_priv WHERE User = '$NAME';
 DELETE FROM columns_priv WHERE User = '$NAME';
