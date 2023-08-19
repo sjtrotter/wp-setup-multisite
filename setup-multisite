@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 
 readonly VERSION="1.0.0"
 readonly ERR_UNK_OPT="64"
