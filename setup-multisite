@@ -1,14 +1,57 @@
 #!/usr/bin/env bash
 
 
+# Pulling out a clearer understanding of what exactly we are doing.
+# - creating new wordpress config
+#   - copying wp-content into /srv/ to serve it from
+#   - writing wordpress config for new site
+#   - creating new database table, database user, and database user password for site;
+# - destroying wordpress config
+#   - reading config for site
+#   - dropping all tables in database
+#   - deleting wp-content IF NOT /var/lib/wordpress/wp-content
+#   - deleting wordpress config
+
+
+
+
+
+
+#     - would like to support local database
+#     - would like to support remote database
+#     - would like to support default debian "secure mysql config"
+#     - would like to support non-standard mysql config, i.e. user/pass
+
+
+
+
+
+unset WP_CONFIG
+declare -A WP_CONFIG
+# DB_NAME - 
+# DB_USER - passed at cli, or generated from fqdn
+# DB_PASSWORD - Generated? or allow user to set at cli
+# DB_HOST - assumed localhost if not given
+# SECRET_KEY - Generated
+# WP_CONTENT_DIR
+
+
+
+
+
+
+
+
+
 # if db_user is given, we assume db_host is given and db_pass is given
 
 # TODO
 # ===========
-# [  todo!  ] prereqs - check for all needed commands, prompt to install? i.e. mysql
-# [  todo!  ] prereqs - check for needed files, prompt to install? i.e. wordpress dir
-# [  todo!  ] inputs - need to separate 'name' from 'db_user'
-# [  todo!  ] destroy - pull db configs from file to destroy
+# [ inwork ] reorganize current codebase
+# [  todo  ] prereqs - check for all needed commands, prompt to install? i.e. mysql
+# [  todo  ] prereqs - check for needed files, prompt to install? i.e. wordpress dir
+# [  todo  ] inputs - need to separate 'name' from 'db_user'
+# [  todo  ] destroy - pull db configs from file to destroy
 
 
 
@@ -63,7 +106,7 @@ checkforexistingsetup() {
     fi
     
     # Generate a random password without Perl
-    MATRIX="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    MATRIX=",.[]<>?:{}!@#$%^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     if [ ! $MYSQLUSER ]; then
         LENGTH="8"
         while [ "${n:=1}" -le "$LENGTH" ]
