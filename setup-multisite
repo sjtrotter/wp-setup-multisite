@@ -18,35 +18,70 @@
 #     - would like to support default debian "secure mysql config"
 #     - would like to support non-standard mysql config, i.e. user/pass
 
-
-
 # TODO
 # ===========
 # [ inwork ] reorganize current codebase
+# [ inwork ] write parse_args
+# [  done  ] check number of args passed
+# [  todo  ] sanitize FQDN
+# [  todo  ] implement debug verbosity
+# [  done  ] import finish, debug, version functions
+# [  done  ] hook imported functions into parse_args
+# [ inwork ] utilize finish for all error exits
 # [  todo  ] prereqs - check for all needed commands, prompt to install? i.e. mysql
-# [  todo  ] prereqs - check for needed files, prompt to install? i.e. wordpress dir
+# [  todo  ] prereqs - check for needed files, prompt to install? i.e. wordpress
 # [  todo  ] inputs - need to separate 'name' from 'db_user'
 # [  todo  ] destroy - pull db configs from file to destroy
-
-# [  done!  ]
-
-
+# ==========
+# [   0%   ] - v0.3.0
 
 readonly VERSION="0.0.0"
 readonly ERR_UNK_OPT="64"
-readonly ERR_NO_FQDN="65"
-#readonly DB_USER_NO_="66"
+readonly ERR_TOO_MANY_OPT="65"
+readonly ERR_NO_FQDN="66"
+#readonly DB_USER_NO_="67"
 #readonly DB
 readonly ORIG_WP_CONTENT="/var/lib/wordpress/wp-content"
+readonly ANSI_RED="\033[1;31m"
+readonly ANSI_CLEAR="\033[0m"
+readonly ANSI_YELLOW="\033[1;93m"
 
+
+unset DEBUG
+unset BACKUP
+unset DESTROY
 unset WP_CONFIG
+
+
+ARGS=()
 declare -A WP_CONFIG
-# DB_NAME - 
+# DB_NAME - passed at cli, or generated from fqdn
 # DB_USER - passed at cli, or generated from fqdn
 # DB_PASSWORD - Generated? or allow user to set at cli
-# DB_HOST - assumed localhost if not given
+# DB_HOST - passed at cli, or assumed localhost
 # SECRET_KEY - Generated
-# WP_CONTENT_DIR
+# WP_CONTENT_DIR - Generated from FQDN
+
+finish () {
+    local rc="$1"
+    local msg="$2"
+    if [[ "${rc}" -gt 0 ]]; then
+        printf "${ANSI_RED}%s: %s${ANSI_CLEAR}\n" "$(basename $0)" "${msg}"
+        printf "Try: $(basename $0) -h\n"
+    fi
+    exit "${rc}"
+} >&2
+
+debug () {
+    local msg="$1"
+    if [[ "${DEBUG}" ]]; then
+        printf "${ANSI_YELLOW}[-]${ANSI_CLEAR} %s\n" "${msg}" >&2
+    fi
+}
+
+version () {
+    printf "${VERSION}\n"
+}
 
 usage() {
 cat <<EOF
@@ -184,18 +219,52 @@ done
 }
 
 
-while getopts "n:hbdu:t:e:-" opt ; do
-    case "$opt" in
-    h) usage ; exit 0 ;;
-    b) BACKUP=1 ;;
-    d) DESTROY=1 ;;
-    n) NAME="$OPTARG" ;;
-    u) MYSQLUSER="$OPTARG" ;;
-    t) DB_HOST="$OPTARG" ;;
-    e) DB_DB="$OPTARG" ;;
-    -) break ;;
-    *) usage 1>&2 ; exit 1 ;;
-    esac
+parse_args () {
+
+    optstring="n:hbdu:t:e:vV"
+
+    while [[ ${OPTIND} -le "$#" ]]; do
+        if getopts ${optstring} arg; then
+            case ${arg} in
+                h) usage; finish 0 "" ;;
+                b) BACKUP=1 ;;
+                d) DESTROY=1 ;;
+                n) NAME="${OPTARG}" ;;
+                u) MYSQLUSER="${OPTARG}" ;;
+                t) DB_HOST="${OPTARG}" ;;
+                v) DEBUG=yes ;;
+                V) version; finish 0 "" ;;
+                e) DB_DB="${OPTARG}" ;;
+                *) finish "${ERR_UNK_OPT}" "unknown option: -${OPTARG}" ;;
+            esac
+        else
+            ARGS+=("${!OPTIND}")
+            ((OPTIND++))
+        fi    
+    done
+
+    if [[ ${#ARGS[@]} -lt 1 ]]; then
+        finish $ERR_NO_FQDN "no FQDN given"
+    elif [[ ${#ARGS[@]} -gt 1 ]]; then
+        finish "${ERR_TOO_MANY_ARGS}" "too many arguments: ${ARGS[@]}"
+    fi
+}
+
+
+
+
+    while getopts "n:hbdu:t:e:-" opt ; do
+        case "$opt" in
+        h) usage ; exit 0 ;;
+        b) BACKUP=1 ;;
+        d) DESTROY=1 ;;
+        n) NAME="$OPTARG" ;;
+        u) MYSQLUSER="$OPTARG" ;;
+        t) DB_HOST="$OPTARG" ;;
+        e) DB_DB="$OPTARG" ;;
+        -) break ;;
+        *) usage 1>&2 ; exit 1 ;;
+        esac
 done
 shift $(($OPTIND - 1))
 
@@ -241,5 +310,16 @@ destroy
 exit 0
 fi
 
-checkforexistingsetup
-create
+main() {
+
+    checkforexistingsetup
+    create
+ }
+
+
+
+# prereqs
+
+
+
+if [[ $(basename $0) == "setup-multisite" ]]; then main "$@"; fi
