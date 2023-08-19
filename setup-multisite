@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-
+# this is a new comment to test.
 
 # Pulling out a clearer understanding of what exactly we are doing.
 # - creating new wordpress config
