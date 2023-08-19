@@ -16,7 +16,7 @@ the things you already installed, like plugins and themes. (Not a big deal.)
 ## Usage
 
 ```bash
-setup-mysql [-h | -d | -b] [-n NAME | -e DB Name] [-u MySQL user] [-t MySQL host] FQDN
+setup-multisite [-h | -d | -b] [-n NAME | -e DB Name] [-u MySQL user] [-t MySQL host] FQDN
 
 Creates by default a Wordpress mysql configuration depending on required fully
 qualified domain name(FQDN).
