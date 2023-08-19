@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 
+
 # Pulling out a clearer understanding of what exactly we are doing.
 # - creating new wordpress config
 #   - copying wp-content into /srv/ to serve it from
