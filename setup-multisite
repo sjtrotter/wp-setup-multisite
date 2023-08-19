@@ -12,38 +12,10 @@
 #   - deleting wp-content IF NOT /var/lib/wordpress/wp-content
 #   - deleting wordpress config
 
-
-
-
-
-
 #     - would like to support local database
 #     - would like to support remote database
 #     - would like to support default debian "secure mysql config"
 #     - would like to support non-standard mysql config, i.e. user/pass
-
-
-
-
-
-unset WP_CONFIG
-declare -A WP_CONFIG
-# DB_NAME - 
-# DB_USER - passed at cli, or generated from fqdn
-# DB_PASSWORD - Generated? or allow user to set at cli
-# DB_HOST - assumed localhost if not given
-# SECRET_KEY - Generated
-# WP_CONTENT_DIR
-
-
-
-
-
-
-
-
-
-# if db_user is given, we assume db_host is given and db_pass is given
 
 # TODO
 # ===========
@@ -53,26 +25,25 @@ declare -A WP_CONFIG
 # [  todo  ] inputs - need to separate 'name' from 'db_user'
 # [  todo  ] destroy - pull db configs from file to destroy
 
-
-
 # [  done!  ]
 
 
 
-
-
-
-
-
-
-
-
-readonly VERSION="1.0.0"
+readonly VERSION="0.0.0"
 readonly ERR_UNK_OPT="64"
 readonly ERR_NO_FQDN="65"
 #readonly DB_USER_NO_="66"
 #readonly DB
+readonly ORIG_WP_CONTENT="/var/lib/wordpress/wp-content"
 
+unset WP_CONFIG
+declare -A WP_CONFIG
+# DB_NAME - 
+# DB_USER - passed at cli, or generated from fqdn
+# DB_PASSWORD - Generated? or allow user to set at cli
+# DB_HOST - assumed localhost if not given
+# SECRET_KEY - Generated
+# WP_CONTENT_DIR
 
 usage() {
 cat <<EOF
