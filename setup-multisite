@@ -44,6 +44,7 @@ readonly ERR_TOO_MANY_ARGS="65"
 readonly ERR_NO_FQDN="66"
 readonly ERR_MUST_BE_ROOT="67"
 readonly ERR_INVALID_FQDN="68"
+readonly ERR_DOMAIN_UNREACHABLE="69"
 # Script-specific constants
 readonly ORIG_WP_CONTENT="/var/lib/wordpress/wp-content"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
@@ -116,7 +117,7 @@ EOF
 checkforexistingsetup() {
     if [ -f $CONFIG_FILE ] ; then
         echo WARNING: $CONFIG_FILE exists!
-        exit 1
+        finish "${ERR_CONFIG_EXISTS}" "config exists: ${CONFIG_FILE}"
     fi
     
     # Generate a random password without Perl
@@ -194,8 +195,7 @@ destroy() {
 # People using complex setups with remote servers probably know how to
 # cleanup after the user any way.
 if [ ! -e /etc/mysql/debian.cnf ]; then
-    echo "Default mysql settings not available. Manual clean up is required."
-    exit 1
+    finish "${ERR_MYSQL_SETTINGS_NOT_AVAILABLE}" "manual database cleanup required"
 fi
 echo Destroying $NAME
 prompt
@@ -226,7 +226,7 @@ done
 
 parse_args () {
 
-    optstring="n:hbdu:t:e:vV"
+    optstring="n:hbdu:t:e:vV-"
 
     while [[ ${OPTIND} -le "$#" ]]; do
         if getopts ${optstring} arg; then
@@ -272,7 +272,7 @@ main() {
     CONTENT="/var/lib/wordpress/wp-content"
     
     if [ $DOMAIN ] ; then
-        ping -c 1 `echo $DOMAIN | sed 's/:[0-9]\+//'` || exit 1
+        ping -c 1 `echo $DOMAIN | sed 's/:[0-9]\+//'` || finish "${ERR_DOMAIN_UNREACHABLE}" "can't reach ${DOMAIN}"
     else
         usage
         exit 0
