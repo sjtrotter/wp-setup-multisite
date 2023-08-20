@@ -35,24 +35,28 @@
 # ==========
 # [   0%   ] - v0.3.0
 
-readonly VERSION="0.0.0"
+
+# This script is versioned with Semantic Versioning. https://semver.org
+readonly VERSION="0.3.0"
+# Errors
 readonly ERR_UNK_OPT="64"
-readonly ERR_TOO_MANY_OPT="65"
+readonly ERR_TOO_MANY_ARGS="65"
 readonly ERR_NO_FQDN="66"
-#readonly DB_USER_NO_="67"
-#readonly DB
+readonly ERR_MUST_BE_ROOT="67"
+readonly ERR_INVALID_FQDN="68"
+# Script-specific constants
 readonly ORIG_WP_CONTENT="/var/lib/wordpress/wp-content"
+readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
+# Colors
 readonly ANSI_RED="\033[1;31m"
 readonly ANSI_CLEAR="\033[0m"
 readonly ANSI_YELLOW="\033[1;93m"
-
-
+# Unset boolean/control vars
 unset DEBUG
 unset BACKUP
 unset DESTROY
 unset WP_CONFIG
-
-
+# Define vars
 ARGS=()
 declare -A WP_CONFIG
 # DB_NAME - passed at cli, or generated from fqdn
@@ -247,70 +251,52 @@ parse_args () {
         finish $ERR_NO_FQDN "no FQDN given"
     elif [[ ${#ARGS[@]} -gt 1 ]]; then
         finish "${ERR_TOO_MANY_ARGS}" "too many arguments: ${ARGS[@]}"
+    elif [[ ! "${ARGS[0]}" =~ $FQDN_VALID ]]; then
+        finish "${ERR_INVALID_FQDN}" "invalid FQDN given"
     fi
 }
 
 
 
-
-    while getopts "n:hbdu:t:e:-" opt ; do
-        case "$opt" in
-        h) usage ; exit 0 ;;
-        b) BACKUP=1 ;;
-        d) DESTROY=1 ;;
-        n) NAME="$OPTARG" ;;
-        u) MYSQLUSER="$OPTARG" ;;
-        t) DB_HOST="$OPTARG" ;;
-        e) DB_DB="$OPTARG" ;;
-        -) break ;;
-        *) usage 1>&2 ; exit 1 ;;
-        esac
-done
-shift $(($OPTIND - 1))
-
-if [ "$(id -u)" != "0" ]
-then
-  echo "You must be root to use this script."
-  exit 1
-fi
-
-DOMAIN=$(echo $1 | tr "[:upper:]" "[:lower:]")
-CONTENT="/var/lib/wordpress/wp-content"
-
-if [ $DOMAIN ] ; then
-ping -c 1 `echo $DOMAIN | sed 's/:[0-9]\+//'` || exit 1
-else
-    usage
-    exit 0
-fi
-
-CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
-
-if [ ! $NAME ] ; then
-NAME=$(echo $DOMAIN | sed 's,\.,,g;s,-,,g')
-echo Constructed database name and user: $NAME from $DOMAIN
-fi
-
-if [ ${#NAME} -gt 16 ]; then
-echo "$NAME is longer than MySQL's limit of 16 characters. Please specify a shorter one."
-exit 1
-fi
-
-if [ ! $DB_HOST ]; then
-    DB_HOST="localhost"
-fi
-
-if [ $BACKUP ] ; then
-backup
-exit 0
-fi
-
-if [ $DESTROY ] ; then
-destroy
-exit 0
-fi
-
 main() {
+    parse_args "$@"
+
+    DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
+    CONTENT="/var/lib/wordpress/wp-content"
+    
+    if [ $DOMAIN ] ; then
+        ping -c 1 `echo $DOMAIN | sed 's/:[0-9]\+//'` || exit 1
+    else
+        usage
+        exit 0
+    fi
+    
+    CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
+    
+    if [ ! $NAME ] ; then
+        NAME=$(echo $DOMAIN | sed 's,\.,,g;s,-,,g')
+        echo Constructed database name and user: $NAME from $DOMAIN
+    fi
+    
+    if [ ${#NAME} -gt 16 ]; then
+        echo "$NAME is longer than MySQL's limit of 16 characters. Please specify a shorter one."
+        exit 1
+    fi
+    
+    if [ ! $DB_HOST ]; then
+        DB_HOST="localhost"
+    fi
+
+
+    if [ $BACKUP ] ; then
+        backup
+        exit 0
+    fi
+    
+    if [ $DESTROY ] ; then
+        destroy
+        exit 0
+    fi
 
     checkforexistingsetup
     create
@@ -319,7 +305,6 @@ main() {
 
 
 # prereqs
-
-
+if [[ "$(id -u)" != "0" ]]; then finish "${ERR_MUST_BE_ROOT}" "must be root"; fi
 
 if [[ $(basename $0) == "setup-multisite" ]]; then main "$@"; fi
