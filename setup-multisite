@@ -68,6 +68,7 @@ declare -A WP_CONFIG
 
 finish () {
     local rc="$1"
+    shift
     local msg="$@"
     if [[ "${rc}" -gt 0 ]]; then
         printf "${ANSI_RED}%s: %s${ANSI_CLEAR}\n" "$(basename $0)" "${msg}"
@@ -77,7 +78,7 @@ finish () {
 } >&2
 
 debug () {
-    local msg="$1"
+    local msg="$@"
     if [[ "${DEBUG}" ]]; then
         printf "${ANSI_YELLOW}[-]${ANSI_CLEAR} %s\n" "${msg}" >&2
     fi
