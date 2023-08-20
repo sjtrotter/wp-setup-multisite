@@ -226,7 +226,7 @@ done
 
 parse_args () {
 
-    optstring="n:hbdu:t:e:vV-"
+    optstring=":n:hbdu:t:e:vV"
 
     while [[ ${OPTIND} -le "$#" ]]; do
         if getopts ${optstring} arg; then
