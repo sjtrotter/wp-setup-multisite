@@ -77,9 +77,10 @@ finish () {
 } >&2
 
 debug () {
-    local msg="$@"
+    local msg="$1"
+    echo $msg
     if [[ "${DEBUG}" ]]; then
-        echo -e "${ANSI_YELLOW}[-]${ANSI_CLEAR} ${msg}\n" >&2
+        printf "${ANSI_YELLOW}[-]${ANSI_CLEAR} %s\n" "${msg}" >&2
     fi
 }
 
