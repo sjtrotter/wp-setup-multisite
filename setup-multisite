@@ -23,8 +23,8 @@
 # [ inwork ] reorganize current codebase
 # [ inwork ] write parse_args
 # [  done  ] check number of args passed
-# [  todo  ] sanitize FQDN
-# [  todo  ] implement debug verbosity
+# [  done  ] sanitize FQDN
+# [ inwork ] implement debug verbosity
 # [  done  ] import finish, debug, version functions
 # [  done  ] hook imported functions into parse_args
 # [  done  ] utilize finish for all error exits
@@ -33,11 +33,11 @@
 # [  todo  ] inputs - need to separate 'name' from 'db_user'
 # [  todo  ] destroy - pull db configs from file to destroy
 # ==========
-# [   33%  ] - v0.4.0
+# [   33%  ] - v0.5.0
 
 
 # This script is versioned with Semantic Versioning. https://semver.org
-readonly VERSION="0.4.0"
+readonly VERSION="0.5.0"
 # Errors
 readonly ERR_UNK_OPT="64"
 readonly ERR_TOO_MANY_ARGS="65"
@@ -45,8 +45,10 @@ readonly ERR_NO_FQDN="66"
 readonly ERR_MUST_BE_ROOT="67"
 readonly ERR_INVALID_FQDN="68"
 readonly ERR_DOMAIN_UNREACHABLE="69"
+readonly ERR_NO_WORDPRESS="70"
 # Script-specific constants
-readonly ORIG_WP_CONTENT="/var/lib/wordpress/wp-content"
+readonly WP_CONTENT_DIR="/var/lib/wordpress/wp-content"
+readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
 # Colors
 readonly ANSI_RED="\033[1;31m"
@@ -151,13 +153,20 @@ checkforexistingsetup() {
     
     # Write the config file for wordpress
     printf "<?php\n" >> $CONFIG_FILE
-    printf "# Created by $0 $@\n" >> $CONFIG_FILE
+    printf "# Created by $0\n" >> $CONFIG_FILE
+
+    # LOOP TO BE USED WHEN ASSOCIATIVE ARRAY IS WORKING
+    # for key in ${WP_CONFIG[@]}; do
+    #     printf "    define('${key}', '${WP_CONFIG[key]}');\n" >> $CONFIG_FILE
+    # done
     printf "define('DB_NAME', '$DB_NAME');\n" >> $CONFIG_FILE
     printf "define('DB_USER', '$DB_USER');\n" >> $CONFIG_FILE
     printf "define('DB_PASSWORD', '$DB_PASSWORD');\n" >> $CONFIG_FILE
     printf "define('DB_HOST', '$DB_HOST');\n" >> $CONFIG_FILE
     printf "define('SECRET_KEY', '$SECRET_KEY');\n" >> $CONFIG_FILE
     printf "define('WP_CONTENT_DIR', '$CONTENT');\n" >> $CONFIG_FILE
+    # LOOP ENDS HERE
+
     printf "define('FS_METHOD', 'direct');\n" >> $CONFIG_FILE
     printf "?>\n" >> $CONFIG_FILE
     # Set permissions
@@ -268,12 +277,22 @@ parse_args () {
 main() {
     parse_args "$@"
 
+# WP_CONTENT[key] = "${value}"
+# 'DB_NAME'
+# 'DB_USER'
+# 'DB_PASSWORD 
+# 'DB_HOST'
+# 'SECRET_KEY'
+# 'WP_CONTENT_DIR'
+
     DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
     CONTENT="/var/lib/wordpress/wp-content"
     
-    if [ $DOMAIN ] ; then
-        ping -c 1 `echo $DOMAIN | sed 's/:[0-9]\+//'` || finish "${ERR_DOMAIN_UNREACHABLE}" "can't reach ${DOMAIN}"
-    fi
+    # skip ping. why does the server have to be online?
+    # -- I think this was to ensure the domain name is valid; using regex now.
+    # if [ $DOMAIN ] ; then
+    #     ping -c 1 `echo $DOMAIN | sed 's/:[0-9]\+//'` || finish "${ERR_DOMAIN_UNREACHABLE}" "can't reach ${DOMAIN}"
+    # fi
     
     CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
     
@@ -308,7 +327,9 @@ main() {
 
 
 # prereqs
-
 if [[ "$(id -u)" != "0" ]]; then finish "${ERR_MUST_BE_ROOT}" "must be root"; fi
+if [[ ! -d "${WP_ETC_DIR}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_ETC_DIR} not found - is wordpress installed?"; fi
+if [[ ! -d "${WP_CONTENT_DIR}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_CONTENT_DIR} not found - is wordpress installed?"; fi
+if 
 
 if [[ $(basename $0) == "setup-multisite" ]]; then main "$@"; fi
