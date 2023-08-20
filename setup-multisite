@@ -119,7 +119,7 @@ checkforexistingsetup() {
     fi
     
     # Generate a random password without Perl
-    MATRIX=",.[]<>?:{}!@#$%^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    MATRIX=",.[]<>?:{}!@#$^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     if [ ! $MYSQLUSER ]; then
         LENGTH="8"
         while [ "${n:=1}" -le "$LENGTH" ]
@@ -247,12 +247,18 @@ parse_args () {
         fi    
     done
 
+    debug "testing FQDN..."
+    debug "... is there one?"
     if [[ ${#ARGS[@]} -lt 1 ]]; then
         finish $ERR_NO_FQDN "no FQDN given"
-    elif [[ ${#ARGS[@]} -gt 1 ]]; then
+    fi
+    debug "... is there too many?"
+    if [[ ${#ARGS[@]} -gt 1 ]]; then
         finish "${ERR_TOO_MANY_ARGS}" "too many arguments: ${ARGS[@]}"
-    elif [[ ! "${ARGS[0]}" =~ $FQDN_VALID ]]; then
-        finish "${ERR_INVALID_FQDN}" "invalid FQDN given"
+    fi
+    debug "... is it valid?"
+    if [[ ! "${ARGS[0]}" =~ $FQDN_VALID ]]; then
+        finish "${ERR_INVALID_FQDN}" "invalid FQDN given: ${ARGS[0]}"
     fi
 }
 
@@ -305,6 +311,7 @@ main() {
 
 
 # prereqs
+
 if [[ "$(id -u)" != "0" ]]; then finish "${ERR_MUST_BE_ROOT}" "must be root"; fi
 
 if [[ $(basename $0) == "setup-multisite" ]]; then main "$@"; fi
