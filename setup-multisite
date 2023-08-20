@@ -77,7 +77,7 @@ finish () {
 } >&2
 
 debug () {
-    local msg="$1"
+    local msg="$@"
     if [[ "${DEBUG}" ]]; then
         printf "${ANSI_YELLOW}[-]${ANSI_CLEAR} %s\n" "${msg}" >&2
     fi
