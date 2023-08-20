@@ -248,8 +248,7 @@ parse_args () {
         fi    
     done
 
-    debug "FQDN: ${ARGS[@]}"
-    debug "testing FQDN..."
+    debug "testing FQDN: ${ARGS[@]} ..."
     debug "... is there one?"
     if [[ ${#ARGS[@]} -lt 1 ]]; then
         finish $ERR_NO_FQDN "no FQDN given"
