@@ -27,13 +27,13 @@
 # [  todo  ] implement debug verbosity
 # [  done  ] import finish, debug, version functions
 # [  done  ] hook imported functions into parse_args
-# [ inwork ] utilize finish for all error exits
+# [  done  ] utilize finish for all error exits
 # [  todo  ] prereqs - check for all needed commands, prompt to install? i.e. mysql
 # [  todo  ] prereqs - check for needed files, prompt to install? i.e. wordpress
 # [  todo  ] inputs - need to separate 'name' from 'db_user'
 # [  todo  ] destroy - pull db configs from file to destroy
 # ==========
-# [   0%   ] - v0.3.0
+# [   33%  ] - v0.4.0
 
 
 # This script is versioned with Semantic Versioning. https://semver.org
@@ -217,7 +217,7 @@ while true; do
   read yn
   case $yn in
     y* | Y* ) break ;;
-    [nN]* )   exit 0 ; break ;;
+    [nN]* )   finish "0" "" ; break ;;
     * ) echo "unknown response.  Asking again" ;;
   esac
 done
@@ -273,9 +273,6 @@ main() {
     
     if [ $DOMAIN ] ; then
         ping -c 1 `echo $DOMAIN | sed 's/:[0-9]\+//'` || finish "${ERR_DOMAIN_UNREACHABLE}" "can't reach ${DOMAIN}"
-    else
-        usage
-        exit 0
     fi
     
     CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
@@ -286,8 +283,7 @@ main() {
     fi
     
     if [ ${#NAME} -gt 16 ]; then
-        echo "$NAME is longer than MySQL's limit of 16 characters. Please specify a shorter one."
-        exit 1
+        finish "${ERR_MYSQL_USER_TOO_LONG}" "MYSQL user ${NAME} should be 16 characters or less"
     fi
     
     if [ ! $DB_HOST ]; then
@@ -297,12 +293,12 @@ main() {
 
     if [ $BACKUP ] ; then
         backup
-        exit 0
+        finish "0" ""
     fi
     
     if [ $DESTROY ] ; then
         destroy
-        exit 0
+        finish "0" ""
     fi
 
     checkforexistingsetup
