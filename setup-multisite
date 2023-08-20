@@ -37,7 +37,7 @@
 
 
 # This script is versioned with Semantic Versioning. https://semver.org
-readonly VERSION="0.3.0"
+readonly VERSION="0.4.0"
 # Errors
 readonly ERR_UNK_OPT="64"
 readonly ERR_TOO_MANY_ARGS="65"
