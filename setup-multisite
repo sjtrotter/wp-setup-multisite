@@ -1,44 +1,29 @@
 #!/usr/bin/env bash
 
-# this is a new comment to test.
-
-# Pulling out a clearer understanding of what exactly we are doing.
-# - creating new wordpress config
-#   - copying wp-content into /srv/ to serve it from
-#   - writing wordpress config for new site
-#   - creating new database table, database user, and database user password for site;
-# - destroying wordpress config
-#   - reading config for site
-#   - dropping all tables in database
-#   - deleting wp-content IF NOT /var/lib/wordpress/wp-content
-#   - deleting wordpress config
-
-#     - would like to support local database
-#     - would like to support remote database
-#     - would like to support default debian "secure mysql config"
-#     - would like to support non-standard mysql config, i.e. user/pass
+# THIS SCRIPT CURRENTLY DOES NOT WORK.
+# -- Currently rewriting to implement new options.
 
 # TODO
 # ===========
-# [ inwork ] reorganize current codebase
-# [ inwork ] write parse_args
+# [ inwork ] reorganize current codebase (will be inwork until finished)
+# [ inwork ] implement debug verbosity (will be inwork until finished)
+# [  done  ] write parse_args
 # [  done  ] check number of args passed
 # [  done  ] sanitize FQDN
-# [ inwork ] implement debug verbosity
 # [  done  ] import finish, debug, version functions
 # [  done  ] hook imported functions into parse_args
 # [  done  ] utilize finish for all error exits
 # [  todo  ] prereqs - check for all needed commands, prompt to install? i.e. mysql
 # [  done  ] prereqs - check for needed files, prompt to install? i.e. wordpress
-# [  todo  ] inputs - need to separate 'name' from 'db_user'
+# [ inwork ] inputs - need to separate wordpress settings from database settings
 # [ inwork ] utilize associative array for wordpress settings
 # [  todo  ] destroy - pull db configs from file to destroy
 # ==========
-# [   46%  ] - v0.6.0
+# [   53%  ] - v0.7.0
 
 
 # This script is versioned with Semantic Versioning. https://semver.org
-readonly VERSION="0.6.0"
+readonly VERSION="0.7.0"
 # Errors
 readonly ERR_UNK_OPT="64"
 readonly ERR_TOO_MANY_ARGS="65"
@@ -48,9 +33,11 @@ readonly ERR_INVALID_FQDN="68"
 readonly ERR_DOMAIN_UNREACHABLE="69"
 readonly ERR_NO_WORDPRESS="70"
 # Script-specific constants
-readonly WP_CONTENT_DIR="/var/lib/wordpress/wp-content"
+readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
+readonly PASSWD_GEN=",.[]<>:{}!@$^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
 # Colors
 readonly ANSI_RED="\033[1;31m"
 readonly ANSI_CLEAR="\033[0m"
@@ -64,7 +51,7 @@ unset WP_CONFIG
 ARGS=()
 declare -A WP_CONFIG
 # DB_NAME - passed at cli, or generated from fqdn
-# DB_USER - passed at cli, or generated from fqdn
+# DB_USER - passed at cli, or generated from fqdn - DIFFERENT from dbadmin
 # DB_PASSWORD - Generated? or allow user to set at cli
 # DB_HOST - passed at cli, or assumed localhost
 # SECRET_KEY - Generated
@@ -97,22 +84,29 @@ cat <<EOF
 $0 [-h | -d | -b] [-n NAME | -e DB Name] [-u MySQL user] [-t MySQL host] FQDN
 
 Creates by default a Wordpress mysql configuration depending on required fully
-qualified domain name(FQDN).
+qualified domain name (FQDN).
 
 Options:
-    -n name for the wordpress site; see also -e below
-    -h help
-    -d destroy and purge
-    -b backup
-    -u mysql username, will require password
-    -t mysql server hostname, if unset localhost will be used
-    -e existing empty mysql database name; will replace -n
+    -h          show this help and exit
+    -v          increase verbosity
+    -d          destroy named site and purge
+    -b          backup named site
+
+Wordpress Settings: (auto-generated if not given)
+    -n NAME     mysql database name for this wordpress instance
+    -u USER     mysql username for this wordpress instance
+    -p PASS     mysql password for this wordpress instance
+
+Database Settings: (assumed localhost/root/no password if not given)
+    -N HOST     mysql server hostname (for non-standard database)
+    -U USER     mysql admin username (for non-standard database)
+    -P PASS     mysql admin password (for non-standard database)
 
 Example: You want your blog to be served from http://blog.example.com
          for user 'wordpress'.
 
 Then run:
-sudo bash setup-mysql -n wordpress blog.example.com
+sudo bash $0 -n wordpress blog.example.com
 
 EOF
 }
@@ -124,12 +118,12 @@ checkforexistingsetup() {
     fi
     
     # Generate a random password without Perl
-    MATRIX=",.[]<>?:{}!@#$^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    # MATRIX=",.[]<>:{}!@$^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     if [ ! $MYSQLUSER ]; then
         LENGTH="8"
         while [ "${n:=1}" -le "$LENGTH" ]
         do
-            DB_PASSWORD="$DB_PASSWORD${MATRIX:$(($RANDOM%${#MATRIX})):1}"
+            DB_PASSWORD="$DB_PASSWORD${PASSWD_GEN:$(($RANDOM%${#PASSWD_GEN})):1}"
             let n+=1
         done
         DB_USER=$NAME
@@ -142,7 +136,7 @@ checkforexistingsetup() {
     LENGTH="50"
     while [ "${n:=1}" -le "$LENGTH" ]
     do
-        SECRET_KEY="$SECRET_KEY${MATRIX:$(($RANDOM%${#MATRIX})):1}"
+        SECRET_KEY="$SECRET_KEY${PASSWD_GEN:$(($RANDOM%${#PASSWD_GEN})):1}"
         let n+=1
     done
     
@@ -151,27 +145,33 @@ checkforexistingsetup() {
     else
         DB_NAME=$DB_DB
     fi
-    
+
     # Write the config file for wordpress
+
+    # REPLACEMENT CODE TO BE USED WHEN ASSOCIATIVE ARRAY IS WORKING
+    # CONFIG_DATA="<?php\n"
+    # CONFIG_DATA="${CONFIG_DATA}# Created by $0\n"
+    # for key in ${WP_CONFIG[@]}; do
+    #     CONFIG_DATA="${CONFIG_DATA}    define('${key}', '${WP_CONFIG[key]}');\n"
+    # done
+    # CONFIG_DATA="${CONFIG_DATA}    define('FS_METHOD', 'direct');\n"
+    # CONFIG_DATA="${CONFIG_DATA}?>\n"
+    # printf "${CONFIG_DATA}" > "${CONFIG_FILE}"
+
     printf "<?php\n" >> $CONFIG_FILE
     printf "# Created by $0\n" >> $CONFIG_FILE
-
-    # LOOP TO BE USED WHEN ASSOCIATIVE ARRAY IS WORKING
-    # for key in ${WP_CONFIG[@]}; do
-    #     printf "    define('${key}', '${WP_CONFIG[key]}');\n" >> $CONFIG_FILE
-    # done
     printf "define('DB_NAME', '$DB_NAME');\n" >> $CONFIG_FILE
     printf "define('DB_USER', '$DB_USER');\n" >> $CONFIG_FILE
     printf "define('DB_PASSWORD', '$DB_PASSWORD');\n" >> $CONFIG_FILE
     printf "define('DB_HOST', '$DB_HOST');\n" >> $CONFIG_FILE
     printf "define('SECRET_KEY', '$SECRET_KEY');\n" >> $CONFIG_FILE
     printf "define('WP_CONTENT_DIR', '$CONTENT');\n" >> $CONFIG_FILE
-    # LOOP ENDS HERE
-
     printf "define('FS_METHOD', 'direct');\n" >> $CONFIG_FILE
     printf "?>\n" >> $CONFIG_FILE
+    # REPLACEMENT CODE ENDS HERE
+
     # Set permissions
-    chmod g+r "${CONFIG_FILE}"
+    chmod 640 "${CONFIG_FILE}"
     chgrp www-data "${CONFIG_FILE}"
     echo $CONFIG_FILE written
 }
@@ -236,7 +236,7 @@ done
 
 parse_args () {
 
-    optstring=":n:hbdu:t:e:vV"
+    optstring=":hvdbn:u:p:N:U:P:V"
 
     while [[ ${OPTIND} -le "$#" ]]; do
         if getopts ${optstring} arg; then
@@ -330,7 +330,7 @@ main() {
 # prereqs
 if [[ "$(id -u)" != "0" ]]; then finish "${ERR_MUST_BE_ROOT}" "must be root"; fi
 if [[ ! -d "${WP_ETC_DIR}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_ETC_DIR} not found - is wordpress installed?"; fi
-if [[ ! -d "${WP_CONTENT_DIR}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_CONTENT_DIR} not found - is wordpress installed?"; fi
+if [[ ! -d "${WP_CONTENT_DIR_ORIG}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_CONTENT_DIR_ORIG} not found - is wordpress installed?"; fi
 if 
 
 if [[ $(basename $0) == "setup-multisite" ]]; then main "$@"; fi
