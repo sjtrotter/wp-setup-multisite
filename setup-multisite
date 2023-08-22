@@ -32,8 +32,13 @@ readonly ERR_MUST_BE_ROOT="67"
 readonly ERR_INVALID_FQDN="68"
 readonly ERR_DOMAIN_UNREACHABLE="69"
 readonly ERR_NO_WORDPRESS="70"
+readonly ERR_NO_MYSQL="71"
+readonly ERR_CONFIG_EXISTS="72"
+readonly ERR_MYSQL_SETTINGS_NOT_AVAILABLE="73"
+readonly ERR_MYSQL_USER_TOO_LONG="74"
 # Script-specific constants
 readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
+readonly WP_CONTENT_SRV_DIR="/srv/www/wp-content"
 readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
 readonly PASSWD_GEN=",.[]<>:{}!@$^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -110,6 +115,17 @@ sudo bash $0 -n wordpress blog.example.com
 
 EOF
 }
+
+generate_password () {
+    local length="$1"
+    local password=
+    while [[ "${n:=1}" -le "${length}" ]]; do
+        password="${password}${PASSWD_GEN:$(($RANDOM%${#PASSWD_GEN})):1}"
+        let n+=1
+    done
+    printf "${password}"
+}
+
 
 checkforexistingsetup() {
     if [ -f $CONFIG_FILE ] ; then
@@ -236,7 +252,7 @@ done
 
 parse_args () {
 
-    optstring=":hvdbn:u:p:N:U:P:V"
+    optstring=":hbdn:u:p:N:U:P:vV"
 
     while [[ ${OPTIND} -le "$#" ]]; do
         if getopts ${optstring} arg; then
@@ -244,12 +260,14 @@ parse_args () {
                 h) usage; finish 0 "" ;;
                 b) BACKUP=1 ;;
                 d) DESTROY=1 ;;
-                n) NAME="${OPTARG}" ;;
-                u) MYSQLUSER="${OPTARG}" ;;
-                t) DB_HOST="${OPTARG}" ;;
+                n) WP_DB_NAME="${OPTARG}" ;;
+                u) WP_DB_USER="${OPTARG}" ;;
+                p) WP_DB_PASS="${OPTARG}" ;;
+                N) MYSQL_HOST="${OPTARG}" ;;
+                U) MYSQL_USER="${OPTARG}" ;;
+                P) MYSQL_PASS="${OPTARG}" ;;
                 v) DEBUG=yes ;;
                 V) version; finish 0 "" ;;
-                e) DB_DB="${OPTARG}" ;;
                 *) finish "${ERR_UNK_OPT}" "unknown option: -${OPTARG}" ;;
             esac
         else
@@ -274,6 +292,17 @@ parse_args () {
 }
 
 
+mksrvdir () {
+    local CONTENT_DIR="$1"
+    if [[ ! -d "${WP_CONTENT_SRV_DIR}" ]]; then mkdir -p "${WP_CONTENT_SRV_DIR}"; fi
+    cp -r "${WP_CONTENT_DIR_ORIG}" "${CONTENT_DIR}"    
+}
+
+mysql_cmd () {
+    
+}
+
+
 
 main() {
     parse_args "$@"
@@ -288,18 +317,14 @@ main() {
 
     DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
     CONTENT="/var/lib/wordpress/wp-content"
-    
-    # skip ping. why does the server have to be online?
-    # -- I think this was to ensure the domain name is valid; using regex now.
-    # if [ $DOMAIN ] ; then
-    #     ping -c 1 `echo $DOMAIN | sed 's/:[0-9]\+//'` || finish "${ERR_DOMAIN_UNREACHABLE}" "can't reach ${DOMAIN}"
-    # fi
-    
     CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
     
-    if [ ! $NAME ] ; then
-        NAME=$(echo $DOMAIN | sed 's,\.,,g;s,-,,g')
-        echo Constructed database name and user: $NAME from $DOMAIN
+    local name=$(echo $DOMAIN | sed 's,\.,,g;s,-,,g')
+
+    if [ ! "${WP_DB_NAME}" ] ; then
+        debug "wordpress database name not given..."
+        WP_DB_NAME="${name}"
+        debug "...generated from FQDN: ${WP_DB_NAME}"
     fi
     
     if [ ${#NAME} -gt 16 ]; then
@@ -331,6 +356,6 @@ main() {
 if [[ "$(id -u)" != "0" ]]; then finish "${ERR_MUST_BE_ROOT}" "must be root"; fi
 if [[ ! -d "${WP_ETC_DIR}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_ETC_DIR} not found - is wordpress installed?"; fi
 if [[ ! -d "${WP_CONTENT_DIR_ORIG}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_CONTENT_DIR_ORIG} not found - is wordpress installed?"; fi
-if 
+MYSQL=$(which mysql) || finish "${ERR_NO_MYSQL}" "mysql not found - is mysql-client installed?"
 
 if [[ $(basename $0) == "setup-multisite" ]]; then main "$@"; fi
