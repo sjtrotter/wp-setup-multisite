@@ -314,8 +314,10 @@ read_config () {
     if [[ $(grep '\#' ${WP_ETC_DIR}/config-${domain}.php) -ne "# Created by $0" ]]; then
         finish "${ERR_CONFIG_MISMATCH}" "config specified not written by this script"
     while read -r line ; do
-        WP_CONFIG[$(echo "$line" | cut -d "'" -f 2)]=$(echo "$line" | cut -d "'" -f 4)
-    done < $(grep -v '\#\|?' ${WP_ETC_DIR}/config-${domian}.php)
+        if [[ ! "${line}" =~ '\#' && ! "${line}" =~ "?" ]]; then
+            WP_CONFIG[$(echo "$line" | cut -d "'" -f 2)]=$(echo "$line" | cut -d "'" -f 4)
+        fi
+    done < ${WP_ETC_DIR}/config-${domian}.php
 
 }
 
