@@ -92,7 +92,7 @@ version () {
 
 usage() {
 cat <<EOF
-$0 [-h | -d | -b] [-n NAME | -e DB Name] [-u MySQL user] [-t MySQL host] FQDN
+$0 [-h|-d|-b] [-n NAME][-u USER][-p PASS] [-N HOST][-U USER][-P PASS]
 
 Creates by default a Wordpress mysql configuration depending on required fully
 qualified domain name (FQDN).
