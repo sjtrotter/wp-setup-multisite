@@ -319,7 +319,7 @@ read_config () {
         if [[ ! "${line}" =~ '\#' ]] && [[ ! "${line}" =~ "?" ]]; then
             local key=$(echo "$line" | cut -d "'" -f 2)
             local value=$(echo "$line" | cut -d "'" -f 4)
-            WP_CONFIG[key]="value"
+            WP_CONFIG[$key]="${value}"
             debug "set $key to $value: ${WP_CONFIG[key]}"
         fi
     done < "${cfgfile}"
