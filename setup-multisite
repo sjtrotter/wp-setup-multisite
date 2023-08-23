@@ -36,6 +36,7 @@ readonly ERR_NO_MYSQL="71"
 readonly ERR_CONFIG_EXISTS="72"
 readonly ERR_MYSQL_SETTINGS_NOT_AVAILABLE="73"
 readonly ERR_MYSQL_USER_TOO_LONG="74"
+readonly ERR_MYSQL_DB_TOO_LONG="75"
 # Script-specific constants
 readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_CONTENT_SRV_DIR="/srv/www/wp-content"
@@ -293,9 +294,9 @@ parse_args () {
 
 
 mksrvdir () {
-    local CONTENT_DIR="$1"
+    local content_dir="$1"
     if [[ ! -d "${WP_CONTENT_SRV_DIR}" ]]; then mkdir -p "${WP_CONTENT_SRV_DIR}"; fi
-    cp -r "${WP_CONTENT_DIR_ORIG}" "${CONTENT_DIR}"    
+    cp -r "${WP_CONTENT_DIR_ORIG}" "${WP_CONTENT_SRV_DIR}/${content_dir}"    
 }
 
 mysql_cmd () {
@@ -308,33 +309,58 @@ main() {
     parse_args "$@"
 
 # WP_CONTENT[key] = "${value}"
-# 'DB_NAME'
-# 'DB_USER'
-# 'DB_PASSWORD 
-# 'DB_HOST'
+# 'DB_NAME'      # WP_DB_NAME
+# 'DB_USER'      # WP_DB_USER
+# 'DB_PASSWORD   # WP_DB_PASS
+# 'DB_HOST'      # MYSQL_HOST
 # 'SECRET_KEY'
 # 'WP_CONTENT_DIR'
 
+# MYSQL_USER
+# MYSQL_PASS
+
     DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
-    CONTENT="/var/lib/wordpress/wp-content"
-    CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
     
     local name=$(echo $DOMAIN | sed 's,\.,,g;s,-,,g')
 
-    if [ ! "${WP_DB_NAME}" ] ; then
+    # Set / Check WP Database
+    if [[ ! "${WP_DB_NAME}" ]] ; then
         debug "wordpress database name not given..."
         WP_DB_NAME="${name}"
         debug "...generated from FQDN: ${WP_DB_NAME}"
     fi
-    
-    if [ ${#NAME} -gt 16 ]; then
-        finish "${ERR_MYSQL_USER_TOO_LONG}" "MYSQL user ${NAME} should be 16 characters or less"
+    if [[ "${#WP_DB_NAME}" -gt 64 ]]; then finish "${ERR_MYSQL_DB_TOO_LONG}" \
+        "database name too long - consider setting with -n"; fi
+    if [[ "${WP_DB_NAME}" =~ "[^a-zA-Z0-9]+" ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
+        "database name invalid character (not all alphanumeric)"; fi
+    WP_CONFIG[DB_NAME]="${WP_DB_NAME}"
+    debug "set WP_CONFIG\[DB_NAME\] to ${WP_DB_NAME}"
+
+    # Set / Check WP User
+    if [[ ! "${WP_DB_USER}" ]]; then
+        debug "wordpress database user not given..."
+        WP_DB_USER="${name}"
+        debug "...generated from FQDN: ${WP_DB_USER}"
     fi
-    
+    if [[ "${#WP_DB_USER}" -gt 32 ]]; then finish "${ERR_MYSQL_USER_TOO_LONG}" \
+        "database name too long - consider setting with -n"; fi
+    if [[ "${WP_DB_USER}" =~ "[^a-zA-Z0-9]+" ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
+        "database user invalid character (not all alphanumeric)"; fi
+    WP_CONFIG[DB_USER]="${WP_DB_USER}"
+    debug "set WP_CONFIG\[DB_USER\] to ${WP_DB_USER}"
+
+    echo "just testing"
+    exit 0
+
     if [ ! $DB_HOST ]; then
         DB_HOST="localhost"
     fi
 
+
+
+
+    CONTENT="/var/lib/wordpress/wp-content"
+    CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
 
     if [ $BACKUP ] ; then
         backup
