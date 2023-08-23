@@ -310,7 +310,8 @@ mysql_cmd () {
 read_config () {
     local domain="$1"
     if [[ ! "${domain}" ]]; then finish "${ERR_NO_ARG_GIVEN}" "no domain given to pull config"; fi
-    debug "attempting pull of config for ${domain}"
+    cfgfile="${WP_ETC_DIR}/config-${domain}.php"
+    debug "attempting pull of config for ${domain} - ${cfgfile}"
     # if [[ "$(grep '\#' ${WP_ETC_DIR}/config-${domain}.php)" != "\# Created by $0" ]]; then
     #     finish "${ERR_CONFIG_MISMATCH}" "config specified not written by this script"
     # fi
@@ -321,7 +322,7 @@ read_config () {
             WP_CONFIG[key]="value"
             debug "set $key to $value: ${WP_CONFIG[key]}"
         fi
-    done < ${WP_ETC_DIR}/config-${domian}.php
+    done < "${cfgfile}"
 
 }
 
