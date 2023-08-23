@@ -172,8 +172,8 @@ checkforexistingsetup() {
 
     # REPLACEMENT CODE TO BE USED WHEN ASSOCIATIVE ARRAY IS WORKING
     # CONFIG_DATA="<?php\n"
-    # CONFIG_DATA="${CONFIG_DATA}# Created by $0\n"
-    # for key in ${WP_CONFIG[@]}; do
+    # CONFIG_DATA="${CONFIG_DATA}${TAGLINE}\n"
+    # for key in ${!WP_CONFIG[@]}; do
     #     CONFIG_DATA="${CONFIG_DATA}    define('${key}', '${WP_CONFIG[key]}');\n"
     # done
     # CONFIG_DATA="${CONFIG_DATA}    define('FS_METHOD', 'direct');\n"
