@@ -16,24 +16,30 @@ the things you already installed, like plugins and themes. (Not a big deal.)
 ## Usage
 
 ```bash
-setup-multisite [-h | -d | -b] [-n NAME | -e DB Name] [-u MySQL user] [-t MySQL host] FQDN
+setup-multisite [-h|-d|-b] [-n NAME][-u USER][-p PASS] [-N HOST][-U USER][-P PASS]
 
 Creates by default a Wordpress mysql configuration depending on required fully
-qualified domain name(FQDN).
+qualified domain name (FQDN).
 
 Options:
-    -h help
-    -d destroy and purge
-    -b backup
-Settings:
-    -n name for the wordpress site; see also -e below
-    -u mysql username, will require password
-    -t mysql server hostname, if unset localhost will be used
-    -e existing empty mysql database name; will replace -n
+    -h          show this help and exit
+    -v          increase verbosity
+    -d          destroy named site and purge
+    -b          backup named site
+
+Wordpress Settings: (auto-generated if not given)
+    -n NAME     mysql database name for this wordpress instance
+    -u USER     mysql username for this wordpress instance
+    -p PASS     mysql password for this wordpress instance
+
+Database Settings: (assumed localhost/root/no password if not given)
+    -N HOST     mysql server hostname (for non-standard database)
+    -U USER     mysql admin username (for non-standard database)
+    -P PASS     mysql admin password (for non-standard database)
 
 Example: You want your blog to be served from http://blog.example.com
          for user 'wordpress'.
 
 Then run:
-sudo bash setup-mysql -n wordpress blog.example.com
+sudo bash setup-multisite -n wordpress blog.example.com
 ```
