@@ -334,7 +334,7 @@ main() {
     if [[ "${WP_DB_NAME}" =~ [^a-zA-Z0-9]+ ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
         "database name invalid character (not all alphanumeric)"; fi
     WP_CONFIG[DB_NAME]="${WP_DB_NAME}"
-    debug "set WP_CONFIG\[DB_NAME\] to ${WP_DB_NAME}"
+    debug "set WP_CONFIG[DB_NAME] to ${WP_DB_NAME}"
 
     # Set / Check WP User
     if [[ ! "${WP_DB_USER}" ]]; then
@@ -347,7 +347,7 @@ main() {
     if [[ "${WP_DB_USER}" =~ "[^a-zA-Z0-9]+" ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
         "database user invalid character (not all alphanumeric)"; fi
     WP_CONFIG[DB_USER]="${WP_DB_USER}"
-    debug "set WP_CONFIG\[DB_USER\] to ${WP_DB_USER}"
+    debug "set WP_CONFIG[DB_USER] to ${WP_DB_USER}"
 
     echo "just testing"
     exit 0
