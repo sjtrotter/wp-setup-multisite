@@ -16,19 +16,19 @@ the things you already installed, like plugins and themes. (Not a big deal.)
 ## Usage
 
 ```bash
-setup-multisite [-h|-d|-b] [-n NAME][-u USER][-p PASS] [-N HOST][-U USER][-P PASS]
+setup-multisite [-h|-v|-d|-b] [-n NAME][-u USER][-p PASS] [-N HOST][-U USER][-P PASS]
 
 Creates by default a Wordpress mysql configuration depending on required fully
 qualified domain name (FQDN).
 
 Options:
-    -h          show this help and exit
-    -v          increase verbosity
-    -d          destroy named site and purge
-    -b          backup named site
+    -h    show this help and exit
+    -v    increase verbosity
+    -d    destroy named site and purge
+    -b    backup named site
 
 Wordpress Settings: (auto-generated if not given)
-    -n NAME     mysql database name for this wordpress instance
+    -n NAME     mysql database for this wordpress instance
     -u USER     mysql username for this wordpress instance
     -p PASS     mysql password for this wordpress instance
 
