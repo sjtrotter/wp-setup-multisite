@@ -331,7 +331,7 @@ main() {
     fi
     if [[ "${#WP_DB_NAME}" -gt 64 ]]; then finish "${ERR_MYSQL_DB_TOO_LONG}" \
         "database name too long - consider setting with -n"; fi
-    if [[ "${WP_DB_NAME}" =~ "[^a-zA-Z0-9]+" ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
+    if [[ "${WP_DB_NAME}" =~ [^a-zA-Z0-9]+ ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
         "database name invalid character (not all alphanumeric)"; fi
     WP_CONFIG[DB_NAME]="${WP_DB_NAME}"
     debug "set WP_CONFIG\[DB_NAME\] to ${WP_DB_NAME}"
