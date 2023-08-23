@@ -41,5 +41,5 @@ Example: You want your blog to be served from http://blog.example.com
          for user 'wordpress'.
 
 Then run:
-sudo bash setup-multisite -n wordpress blog.example.com
+sudo bash setup-multisite -u wordpress blog.example.com
 ```

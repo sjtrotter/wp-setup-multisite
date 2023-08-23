@@ -117,7 +117,7 @@ Example: You want your blog to be served from http://blog.example.com
          for user 'wordpress'.
 
 Then run:
-sudo bash $0 -n wordpress blog.example.com
+sudo bash $0 -u wordpress blog.example.com
 
 EOF
 }
