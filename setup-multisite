@@ -314,6 +314,7 @@ read_config () {
     cfgfile="${WP_ETC_DIR}/config-${domain}.php"
     debug "attempting pull of config for ${domain} - ${cfgfile}"
     local test=$(grep '\#' ${cfgfile})
+    debug "${test} = ${TAGLINE} ...?"
     if [[ "${test}" != "${TAGLINE}" ]]; then
         finish "${ERR_CONFIG_MISMATCH}" "config specified not written by this script"
     fi
