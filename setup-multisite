@@ -38,6 +38,8 @@ readonly ERR_MYSQL_SETTINGS_NOT_AVAILABLE="73"
 readonly ERR_MYSQL_USER_TOO_LONG="74"
 readonly ERR_MYSQL_DB_TOO_LONG="75"
 readonly ERR_MYSQL_INVALID_CHAR="76"
+readonly ERR_NO_ARG_GIVEN="77"
+readonly ERR_CONFIG_MISMATCH="78"
 # Script-specific constants
 readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_CONTENT_SRV_DIR="/srv/www/wp-content"
@@ -305,6 +307,18 @@ mysql_cmd () {
 }
 
 
+read_config () {
+    local domain="$1"
+    if [[ ! "${domain}" ]]; then finish "${ERR_NO_ARG_GIVEN}" "no domain given to pull config"; fi
+    debug "attempting pull of config for ${domain}"
+    if [[ $(grep '\#' ${WP_ETC_DIR}/config-${domain}.php) -ne "# Created by $0" ]]; then
+        finish "${ERR_CONFIG_MISMATCH}" "config specified not written by this script"
+    while read -r line ; do
+        WP_CONFIG[$(echo "$line" | cut -d "'" -f 2)]="$(echo $line | cut -d \' -f 4)"
+    done < $(grep -v '\#' ${WP_ETC_DIR}/config-${domian}.php | grep -v "?")
+
+}
+
 
 main() {
     parse_args "$@"
@@ -345,12 +359,14 @@ main() {
     fi
     if [[ "${#WP_DB_USER}" -gt 32 ]]; then finish "${ERR_MYSQL_USER_TOO_LONG}" \
         "database name too long - consider setting with -n"; fi
-    if [[ "${WP_DB_USER}" =~ "[^a-zA-Z0-9]+" ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
+    if [[ "${WP_DB_USER}" =~ [^a-zA-Z0-9\-\_]+ ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
         "database user invalid character (not all alphanumeric)"; fi
     WP_CONFIG[DB_USER]="${WP_DB_USER}"
     debug "set WP_CONFIG[DB_USER] to ${WP_DB_USER}"
 
-    echo "just testing"
+
+    echo "testing read_config"
+    read_config $DOMAIN
     exit 0
 
     if [ ! $DB_HOST ]; then
