@@ -232,7 +232,7 @@ backup () {
     mkdir "${domain}-bak"
 
     debug "...dumping database ${db} for ${domain}"
-    "$(mysql_cmd ${host} ${port} ${db} ${user} ${pass} ${dump})" > "${backupfile}"
+    "mysql_cmd ${host} ${port} ${db} ${user} ${pass} ${dump}" > "${backupfile}"
     # mysqldump --add-drop-table -u root -p $NAME | bzip2 -c > $BACKUPFILE && echo Wrote $BACKUPFILE
 
     debug "...grabbing config file ${cfgfile}"
