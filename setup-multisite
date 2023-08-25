@@ -432,7 +432,7 @@ main() {
 
     if [[ $BACKUP ]] ; then
         read_config "${DOMAIN}"
-        backup
+        backup "${DOMAIN}"
         finish "0" ""
     fi
 
