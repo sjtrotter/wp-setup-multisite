@@ -46,7 +46,7 @@ readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_SRV_DIR="/srv/www/wp-content"
 readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
-readonly PASSWD_GEN=",.[]<>:{}!@$^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+readonly PASSWD_GEN="([{%+-./:=@_}])0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 # Colors
 readonly ANSI_RED="\033[1;31m"
@@ -208,7 +208,7 @@ if [ ! $DB_DB ]; then
 CREATE DATABASE $NAME;
 GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER
 ON $DB_NAME.*
-TO $DB_USER@$DB_HOST
+TO '$DB_USER'@'$DB_HOST'
 IDENTIFIED BY '$DB_PASSWORD';
 FLUSH PRIVILEGES;
 EOF
@@ -217,10 +217,34 @@ fi
 echo Goto http://$DOMAIN to setup Wordpress
 }
 
-backup() {
-echo Enter root password for mysql:
-BACKUPFILE=/tmp/blog-$NAME.bak.sql.bz2
-mysqldump --add-drop-table -u root -p $NAME | bzip2 -c > $BACKUPFILE && echo Wrote $BACKUPFILE
+backup () {
+    debug "backing up..."
+    local domain="$1"
+    local backupfile="${domain}-bak/${domain}.sql"
+    local cfgfile="config-${domain}.php"
+    local host="$(${WP_CONFIG[DB_HOST]} | cut -d ':' -f1)"
+    local port="$(${WP_CONFIG[DB_HOST]} | cut -d ':' -f2)"
+    local db="${WP_CONFIG[DB_NAME]}"
+    local user="${WP_CONFIG[DB_USER]}"
+    local pass="${WP_CONFIG[DB_PASSWORD]}"
+    local dump='y'
+    if [[ "${host}" == "${port}" ]]; then port="none"; fi
+    mkdir "${domain}-bak"
+
+    debug "...dumping database ${db} for ${domain}"
+    "$(mysql_cmd ${host} ${port} ${db} ${user} ${pass} ${dump})" > "${backupfile}"
+    # mysqldump --add-drop-table -u root -p $NAME | bzip2 -c > $BACKUPFILE && echo Wrote $BACKUPFILE
+
+    debug "...grabbing config file ${cfgfile}"
+    cp "${WP_ETC_DIR}/${cfgfile}" "${domain}-bak"
+
+    debug "...tar.gz-ing"
+    debug $(tar -czvf "${domain}-bak.tar.gz" "${domain}-bak")
+
+    debug "...removing backup folder"
+    rm -rf "${domain}-bak"
+
+    echo "Backup Done: ./${domain}-bak.tar.gz"
 }
 
 destroy() {
@@ -309,13 +333,16 @@ mksrvdir () {
 
 read_config () {
     local domain="$1"
-    if [[ ! "${domain}" ]]; then finish "${ERR_NO_ARG}" "no domain given to pull config"; fi
     cfgfile="${WP_ETC_DIR}/config-${domain}.php"
-    debug "attempting pull of config for ${domain} - ${cfgfile}"
+    debug "attempting pull of config for ${domain} - '${cfgfile}'"
+
+    if [[ ! "${domain}" ]]; then finish "${ERR_NO_ARG}" "no domain given to pull config"; fi
     if [[ ! -f "${cfgfile}" ]]; then finish "${ERR_NO_SUCH_FILE}" "config ${cfgfile} does not exist"; fi
+
     if [[ "$(grep '\#' ${cfgfile})" != "${TAGLINE}" ]]; then
-        finish "${ERR_CONFIG_MISMATCH}" "config specified not written by this script"
+        finish "${ERR_CONFIG_MISMATCH}" "config edited or not written by this script"
     fi
+
     while read -r line ; do
         if [[ "${line}" =~ '#' ]] || [[ "${line}" =~ "?" ]]; then
             :
@@ -326,7 +353,6 @@ read_config () {
             debug "set $key to ${WP_CONFIG[$key]}"
         fi
     done < "${cfgfile}"
-
 }
 
 
@@ -340,13 +366,20 @@ mysql_cmd () {
     local db="-D $3"
     local user="-u $4"
     local pass="-p$5"
+    local dump="$6"
+    local cmd="${MYSQL}"
     if [[ "${host}" == "-h none" || "${host}" == "-h " ]]; then unset host; fi
     if [[ "${port}" == "-P none" || "${port}" == "-P " ]]; then unset port; fi
     if [[ "${db}" == "-D none" || "${db}" == "-D " ]]; then unset db; fi
     if [[ "${user}" == "-u none" || "${user}" == "-u " ]]; then unset user; fi
     if [[ "${pass}" == "-pnone" || "${pass}" == "-p" ]]; then unset pass; fi
 
-    printf "${MYSQL} ${host} ${port} ${user} ${pass} ${db}" 
+    if [[ -n "${dump}" ]]; then
+        cmd="${MYSQLDUMP}"
+        db=$(echo ${db} | sed 's/-D //g')
+    fi
+
+    printf "${cmd} ${host} ${port} ${user} ${pass} ${db}" 
 }
 
 set_wp_name () {
@@ -398,6 +431,7 @@ main() {
     DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
 
     if [[ $BACKUP ]] ; then
+        read_config "${DOMAIN}"
         backup
         finish "0" ""
     fi
@@ -449,5 +483,6 @@ if [[ "$(id -u)" != "0" ]]; then finish "${ERR_MUST_BE_ROOT}" "must be root"; fi
 if [[ ! -d "${WP_ETC_DIR}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_ETC_DIR} not found - is wordpress installed?"; fi
 if [[ ! -d "${WP_CONTENT_DIR_ORIG}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_CONTENT_DIR_ORIG} not found - is wordpress installed?"; fi
 MYSQL=$(which mysql) || finish "${ERR_NO_MYSQL}" "mysql not found - is mysql-client installed?"
+MYSQLDUMP=$(which mysqldump) || finish "${ERR_NO_MYSQL}" "mysqldump not found - is mysql-client installed?"
 
 if [[ $(basename $0) == "setup-multisite" ]]; then main "$@"; fi
