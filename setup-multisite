@@ -28,7 +28,7 @@ readonly VERSION="0.8.0"
 # Errors
 readonly ERR_UNK_OPT="64"
 readonly ERR_TOO_MANY_ARGS="65"
-readonly ERR_NO_FQDN="66"
+readonly ERR_NO_ARG="66"
 readonly ERR_MUST_BE_ROOT="67"
 readonly ERR_INVALID_FQDN="68"
 readonly ERR_DOMAIN_UNREACHABLE="69"
@@ -39,11 +39,11 @@ readonly ERR_MYSQL_SETTINGS_NOT_AVAILABLE="73"
 readonly ERR_MYSQL_USER_TOO_LONG="74"
 readonly ERR_MYSQL_DB_TOO_LONG="75"
 readonly ERR_MYSQL_INVALID_CHAR="76"
-readonly ERR_NO_ARG_GIVEN="77"
-readonly ERR_CONFIG_MISMATCH="78"
+readonly ERR_CONFIG_MISMATCH="77"
+readonly ERR_NO_SUCH_FILE="78"
 # Script-specific constants
 readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
-readonly WP_CONTENT_SRV_DIR="/srv/www/wp-content"
+readonly WP_SRV_DIR="/srv/www/wp-content"
 readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
 readonly PASSWD_GEN=",.[]<>:{}!@$^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -108,10 +108,11 @@ Wordpress Settings: (auto-generated if not given)
     -u USER     mysql username for this wordpress instance
     -p PASS     mysql password for this wordpress instance
 
-Database Settings: (assumed localhost/root/no password if not given)
+Database Settings: (assumed localhost/3306/root/no-password if not given)
     -N HOST     mysql server hostname (for non-standard database)
-    -U USER     mysql admin username (for non-standard database)
-    -P PASS     mysql admin password (for non-standard database)
+    -T PORT     mysql server port     (for non-standard database)
+    -U USER     mysql admin username  (for non-standard database)
+    -P PASS     mysql admin password  (for non-standard database)
 
 Example: You want your blog to be served from http://blog.example.com
          for user 'wordpress'.
@@ -270,6 +271,7 @@ parse_args () {
                 u) WP_DB_USER="${OPTARG}" ;;
                 p) WP_DB_PASS="${OPTARG}" ;;
                 N) MYSQL_HOST="${OPTARG}" ;;
+                T) MYSQL_PORT="${OPTARG}" ;;
                 U) MYSQL_USER="${OPTARG}" ;;
                 P) MYSQL_PASS="${OPTARG}" ;;
                 v) DEBUG=yes ;;
@@ -285,7 +287,7 @@ parse_args () {
     debug "testing FQDN: ${ARGS[@]} ..."
     debug "... is there one?"
     if [[ ${#ARGS[@]} -lt 1 ]]; then
-        finish $ERR_NO_FQDN "no FQDN given"
+        finish $ERR_NO_ARG "no FQDN given"
     fi
     debug "... is there too many?"
     if [[ ${#ARGS[@]} -gt 1 ]]; then
@@ -300,20 +302,17 @@ parse_args () {
 
 mksrvdir () {
     local content_dir="$1"
-    if [[ ! -d "${WP_CONTENT_SRV_DIR}" ]]; then mkdir -p "${WP_CONTENT_SRV_DIR}"; fi
-    cp -r "${WP_CONTENT_DIR_ORIG}" "${WP_CONTENT_SRV_DIR}/${content_dir}"    
-}
-
-mysql_cmd () {
-    :
+    if [[ ! -d "${WP_SRV_DIR}" ]]; then mkdir -p "${WP_SRV_DIR}"; fi
+    cp -r "${WP_CONTENT_DIR_ORIG}" "${WP_SRV_DIR}/${content_dir}"    
 }
 
 
 read_config () {
     local domain="$1"
-    if [[ ! "${domain}" ]]; then finish "${ERR_NO_ARG_GIVEN}" "no domain given to pull config"; fi
+    if [[ ! "${domain}" ]]; then finish "${ERR_NO_ARG}" "no domain given to pull config"; fi
     cfgfile="${WP_ETC_DIR}/config-${domain}.php"
     debug "attempting pull of config for ${domain} - ${cfgfile}"
+    if [[ ! -f "${cfgfile}" ]]; then finish "${ERR_NO_SUCH_FILE}" "config ${cfgfile} does not exist"; fi
     if [[ "$(grep '\#' ${cfgfile})" != "${TAGLINE}" ]]; then
         finish "${ERR_CONFIG_MISMATCH}" "config specified not written by this script"
     fi
@@ -331,25 +330,28 @@ read_config () {
 }
 
 
-main() {
-    parse_args "$@"
+mysql_cmd () {
+    # call like:
+    # $(mysql_cmd localhost 3306 mysql root some_password)
+    # ..or
+    # $(mysql_cmd) - for local su connection
+    local host="-h $1"
+    local port="-P $2"
+    local db="-D $3"
+    local user="-u $4"
+    local pass="-p$5"
+    if [[ "${host}" == "-h none" || "${host}" == "-h " ]]; then unset host; fi
+    if [[ "${port}" == "-P none" || "${port}" == "-P " ]]; then unset port; fi
+    if [[ "${db}" == "-D none" || "${db}" == "-D " ]]; then unset db; fi
+    if [[ "${user}" == "-u none" || "${user}" == "-u " ]]; then unset user; fi
+    if [[ "${pass}" == "-pnone" || "${pass}" == "-p" ]]; then unset pass; fi
 
-# WP_CONTENT[key] = "${value}"
-# 'DB_NAME'      # WP_DB_NAME
-# 'DB_USER'      # WP_DB_USER
-# 'DB_PASSWORD   # WP_DB_PASS
-# 'DB_HOST'      # MYSQL_HOST
-# 'SECRET_KEY'
-# 'WP_CONTENT_DIR'
+    printf "${MYSQL} ${host} ${port} ${user} ${pass} ${db}" 
+}
 
-# MYSQL_USER
-# MYSQL_PASS
-
-    DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
-    
-    local name=$(echo $DOMAIN | sed 's,\.,,g;s,-,,g')
-
+set_wp_name () {
     # Set / Check WP Database
+    local name="$1"
     if [[ ! "${WP_DB_NAME}" ]] ; then
         debug "wordpress database name not given..."
         WP_DB_NAME="${name}"
@@ -361,8 +363,11 @@ main() {
         "database name invalid character (not all alphanumeric)"; fi
     WP_CONFIG[DB_NAME]="${WP_DB_NAME}"
     debug "set WP_CONFIG[DB_NAME] to ${WP_DB_NAME}"
+}
 
+set_wp_user () {
     # Set / Check WP User
+    local name="$1"
     if [[ ! "${WP_DB_USER}" ]]; then
         debug "wordpress database user not given..."
         WP_DB_USER="${name}"
@@ -374,6 +379,42 @@ main() {
         "database user invalid character (not all alphanumeric)"; fi
     WP_CONFIG[DB_USER]="${WP_DB_USER}"
     debug "set WP_CONFIG[DB_USER] to ${WP_DB_USER}"
+}
+
+main() {
+    parse_args "$@"
+
+# WP_CONTENT[key] = "${value}"
+# 'DB_NAME'      # WP_DB_NAME
+# 'DB_USER'      # WP_DB_USER
+# 'DB_PASSWORD   # WP_DB_PASS
+# 'DB_HOST'      # MYSQL_HOST:MYSQL_PORT
+# 'SECRET_KEY'
+# 'WP_CONTENT_DIR'
+
+# MYSQL_USER
+# MYSQL_PASS
+
+    DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
+
+    if [[ $BACKUP ]] ; then
+        backup
+        finish "0" ""
+    fi
+
+
+
+
+
+
+
+
+
+
+
+    local name=$(echo $DOMAIN | sed 's,\.,-,g')
+
+
 
 
     echo "testing read_config"
@@ -390,10 +431,7 @@ main() {
     CONTENT="/var/lib/wordpress/wp-content"
     CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
 
-    if [ $BACKUP ] ; then
-        backup
-        finish "0" ""
-    fi
+
     
     if [ $DESTROY ] ; then
         destroy
