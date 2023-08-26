@@ -16,7 +16,8 @@ the things you already installed, like plugins and themes. (Not a big deal.)
 ## Usage
 
 ```bash
-setup-multisite [-h|-v|-d[f]|-b[f]] [-n NAME][-u USER][-p PASS] [-N HOST][-U USER][-P PASS]
+setup-multisite [-h|-d|-b] [-v] [-f] [-n NAME][-u USER][-p PASS]
+        [-N HOST][-U USER][-P PASS]
 
 Creates by default a Wordpress mysql configuration depending on required fully
 qualified domain name (FQDN).
@@ -24,10 +25,9 @@ qualified domain name (FQDN).
 Options:
     -h    show this help and exit
     -v    increase verbosity
-    -d[f] destroy site and purge
-      [force - don't prompt, allow destroy from config not written by script]
-    -b[f] backup site (database dump and config)
-      [force - allow backup from config not written by script]
+    -b    backup site (database dump and config)
+    -f    force - skips prompts, allows operation when it might fail
+          i.e: config exists, config not written by script
 
 Wordpress Settings: (auto-generated if not given)
     -n NAME     mysql database for this wordpress instance
@@ -39,9 +39,13 @@ Database Settings: (assumed localhost/root/no password if not given)
     -U USER     mysql admin username (for non-standard database)
     -P PASS     mysql admin password (for non-standard database)
 
-Example: You want your blog to be served from http://blog.example.com
-         for user 'wordpress'.
+Examples:
+    create database and config for blog.example.com:
+        bash setup-multisite blog.example.com
+    
+    backup database and config for blog.example.com with debugging enabled:
+        bash setup-multisite -bv blog.example.com
 
-Then run:
-sudo bash setup-multisite -u wordpress blog.example.com
+    force destroy database and config with no prompt for blog.example.com:
+        bash setup-multisite -df blog.example.com
 ```
