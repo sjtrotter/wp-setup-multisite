@@ -127,11 +127,14 @@ generate_password () {
     declare -n _return="$1"
     local _length="$2"
     local _password=
+    local _n=1
     if [[ ! "${_length}" ]]; then finish "${ERR_NO_ARG}" "no length given for password"; fi
-    while [[ "${n:=1}" -le "${_length}" ]]; do
+
+    while [[ "${_n}" -le "${_length}" ]]; do
         _password="${_password}${PASSWD_GEN:$(($RANDOM%${#PASSWD_GEN})):1}"
-        let n+=1
+        let _n+=1
     done
+
     _return="${_password}"
 }
 
