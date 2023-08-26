@@ -275,7 +275,7 @@ destroy() {
 
     debug "...dropping database ${db}"
     printf "DROP DATABASE ${db};" > /tmp/dropfile
-    $(mysql_cmd "${host} ${port} ${db} ${user} ${pass}") < /tmp/dropfile
+    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}") < /tmp/dropfile 2>&1>/dev/null
     if [[ $? -ne 0 ]]; then rm /tmp/dropfile; finish "${ERR_MYSQL_ERROR}" "mysql drop failed - check creds and database"; fi
     rm -rf /tmp/dropfile
 
