@@ -24,8 +24,10 @@ qualified domain name (FQDN).
 
 Options:
     -h    show this help and exit
+    -d    destroy site (drop database, delete config)
+    -b    backup site (dump database, save config to .tar.gz)
+    -V    show version
     -v    increase verbosity
-    -b    backup site (database dump and config)
     -f    force - skips prompts, allows operation when it might fail
           i.e: config exists, config not written by script
 

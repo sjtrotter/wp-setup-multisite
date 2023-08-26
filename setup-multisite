@@ -93,7 +93,7 @@ version () {
 
 usage() {
 cat <<EOF
-$0 [-h|-d|-b] [-v] [-f] [-n NAME][-u USER][-p PASS]
+$0 [-h|-d|-b|-V] [-v] [-f] [-n NAME][-u USER][-p PASS]
         [-N HOST][-U USER][-P PASS]
 
 Creates by default a Wordpress mysql configuration depending on required fully
@@ -101,8 +101,10 @@ qualified domain name (FQDN).
 
 Options:
     -h    show this help and exit
+    -d    destroy site (drop database, delete config)
+    -b    backup site (dump database, save config to .tar.gz)
+    -V    show version
     -v    increase verbosity
-    -b    backup site (database dump and config)
     -f    force - skips prompts, allows operation when it might fail
           i.e: config exists, config not written by script
 
