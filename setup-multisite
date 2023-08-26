@@ -212,7 +212,7 @@ if [ ! $DB_DB ]; then
     MYSQLCOMMAND="mysql -u $DB_USER -p -h $DB_HOST"
     $MYSQLCOMMAND <<EOF
 CREATE DATABASE $NAME;
-GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER
+GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER,LOCK
 ON $DB_NAME.*
 TO '$DB_USER'@'$DB_HOST'
 IDENTIFIED BY '$DB_PASSWORD';
@@ -238,7 +238,7 @@ backup () {
     mkdir "${domain}-bak"
 
     debug "...dumping database ${db} for ${domain}"
-    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" "${dump}") 2>&1> "${backupfile}"
+    $(mysql_cmd --single-transaction "${host}" "${port}" "${db}" "${user}" "${pass}" "${dump}") 2>&1> "${backupfile}"
     if [[ $? -ne 0 ]]; then
         rm -rf "${domain}-bak"
         finish "${ERR_MYSQL_ERROR}" "mysqldump failed - check creds and database"
