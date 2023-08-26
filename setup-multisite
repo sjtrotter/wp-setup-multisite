@@ -56,6 +56,7 @@ readonly ANSI_YELLOW="\033[1;93m"
 unset DEBUG
 unset BACKUP
 unset DESTROY
+unset FORCE
 unset WP_CONFIG
 # Define vars
 ARGS=()
@@ -92,7 +93,7 @@ version () {
 
 usage() {
 cat <<EOF
-$0 [-h|-v|-d|-b] [-n NAME][-u USER][-p PASS] [-N HOST][-U USER][-P PASS]
+$0 [-h|-v|-d[f]|-b] [-n NAME][-u USER][-p PASS] [-N HOST][-U USER][-P PASS]
 
 Creates by default a Wordpress mysql configuration depending on required fully
 qualified domain name (FQDN).
@@ -100,7 +101,7 @@ qualified domain name (FQDN).
 Options:
     -h    show this help and exit
     -v    increase verbosity
-    -d    destroy named site and purge
+    -d[f] destroy named site and purge [force - don't prompt]
     -b    backup named site (database dump and config file)
 
 Wordpress Settings: (auto-generated if not given)
@@ -257,24 +258,31 @@ backup () {
 }
 
 destroy() {
-# The destroy method need root to be able to drop databases and such.
-# People using complex setups with remote servers probably know how to
-# cleanup after the user any way.
-if [ ! -e /etc/mysql/debian.cnf ]; then
-    finish "${ERR_MYSQL_SETTINGS_NOT_AVAILABLE}" "manual database cleanup required"
-fi
-echo Destroying $NAME
-prompt
-mysql --defaults-extra-file=/etc/mysql/debian.cnf <<EOF
-CONNECT mysql;
-DELETE FROM user where user='$NAME';
-DELETE FROM db WHERE User = '$NAME';
-DELETE FROM tables_priv WHERE User = '$NAME';
-DELETE FROM columns_priv WHERE User = '$NAME';
-FLUSH PRIVILEGES ;
-DROP DATABASE IF EXISTS $NAME;
-EOF
-rm $CONFIG_FILE
+    debug "destroying site..."
+    local domain="$1"
+    local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
+    local host="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f1)"
+    local port="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f2)"
+    local db="${WP_CONFIG[DB_NAME]}"
+    local user="${WP_CONFIG[DB_USER]}"
+    local pass="${WP_CONFIG[DB_PASSWORD]}"
+    if [[ "${host}" == "${port}" ]]; then port="none"; fi
+
+    if [[ ! "${FORCE}" ]]; then
+        debug "...force not set. confirm destroy."
+        prompt
+    fi
+
+    debug "...dropping database ${db}"
+    printf "DROP DATABASE ${db};" > /tmp/dropfile
+    $(mysql_cmd "${host} ${port} ${db} ${user} ${pass}") < /tmp/dropfile
+    if [[ $? -ne 0 ]]; then rm /tmp/dropfile; finish "${ERR_MYSQL_ERROR}" "mysql drop failed - check creds and database"; fi
+    rm -rf /tmp/dropfile
+
+    debug "...removing config ${cfgfile}"
+    rm -rf "${cfgfile}"
+
+    printf "Config ${cfgfile} removed, and database ${db} dropped."
 }
 
 prompt() {
@@ -282,8 +290,8 @@ while true; do
   echo -n "Are you sure? (y/n) "
   read yn
   case $yn in
-    y* | Y* ) break ;;
-    [nN]* )   finish 0 ; break ;;
+    [yY]* ) break ;;
+    [nN]* ) finish 0 ; break ;;
     * ) echo "unknown response.  Asking again" ;;
   esac
 done
@@ -300,6 +308,7 @@ parse_args () {
                 h) usage; finish 0 ;;
                 b) BACKUP=1 ;;
                 d) DESTROY=1 ;;
+                f) FORCE=1 ;;
                 n) WP_DB_NAME="${OPTARG}" ;;
                 u) WP_DB_USER="${OPTARG}" ;;
                 p) WP_DB_PASS="${OPTARG}" ;;
@@ -445,7 +454,11 @@ main() {
         finish 0
     fi
 
-
+    if [[ $DESTROY ]] ; then
+        read_config "${DOMAIN}"
+        destroy "${DOMAIN}"
+        finish 0
+    fi
 
 
 
@@ -470,10 +483,7 @@ main() {
 
 
     
-    if [ $DESTROY ] ; then
-        destroy
-        finish 0
-    fi
+
 
     checkforexistingsetup
     create
