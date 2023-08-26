@@ -31,7 +31,7 @@ readonly ERR_TOO_MANY_ARGS="65"
 readonly ERR_NO_ARG="66"
 readonly ERR_MUST_BE_ROOT="67"
 readonly ERR_INVALID_FQDN="68"
-readonly ERR_DOMAIN_UNREACHABLE="69"
+readonly ERR_MYSQL_ERROR="69"
 readonly ERR_NO_WORDPRESS="70"
 readonly ERR_NO_MYSQL="71"
 readonly ERR_CONFIG_EXISTS="72"
@@ -238,6 +238,10 @@ backup () {
 
     debug "...dumping database ${db} for ${domain}"
     $(mysql_cmd "${host} ${port} ${db} ${user} ${pass} ${dump}") > "${backupfile}"
+    if [[ $? -ne 0 ]]; then
+        finish "${ERR_MYSQL_ERROR}" "mysqldump failed - check creds and database"
+        rm -rf "${backupfile}"
+    fi
     # mysqldump --add-drop-table -u root -p $NAME | bzip2 -c > $BACKUPFILE && echo Wrote $BACKUPFILE
 
     debug "...grabbing config file ${cfgfile}"
