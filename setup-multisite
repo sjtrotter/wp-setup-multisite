@@ -455,7 +455,7 @@ main() {
     generate_password a 10
     echo $a
     generate_password new_pass 10
-    echo "${new_pass}"
+    echo $new_pass
     debug "new password: ${new_pass}"
     exit 0
 
