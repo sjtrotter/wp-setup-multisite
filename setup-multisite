@@ -282,7 +282,7 @@ destroy() {
     debug "...removing config ${cfgfile}"
     rm -rf "${cfgfile}"
 
-    printf "Config ${cfgfile} removed, and database ${db} dropped.\nRemove the user ${user} from database if you wish."
+    printf "Config ${cfgfile} removed, and database ${db} dropped.\nRemove the user ${user} from database if you wish.\n"
 }
 
 prompt() {
