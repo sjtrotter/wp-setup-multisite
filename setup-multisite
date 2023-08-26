@@ -101,7 +101,7 @@ Options:
     -h    show this help and exit
     -v    increase verbosity
     -d    destroy named site and purge
-    -b    backup named site
+    -b    backup named site (database dump and config file)
 
 Wordpress Settings: (auto-generated if not given)
     -n NAME     mysql database for this wordpress instance
@@ -126,6 +126,7 @@ EOF
 generate_password () {
     local length="$1"
     local password=
+    if [[ ! "${length}" ]]; then finish "${ERR_NO_ARG}" "no length given for password"
     while [[ "${n:=1}" -le "${length}" ]]; do
         password="${password}${PASSWD_GEN:$(($RANDOM%${#PASSWD_GEN})):1}"
         let n+=1
@@ -445,10 +446,15 @@ main() {
 
 
 
-
     local name=$(echo $DOMAIN | sed 's,\.,-,g')
 
 
+
+    echo "testing password generation"
+    generate_password 10
+    new_pass=$(generate_password 10)
+    debug "new password: ${new_pass}"
+    exit 0
 
 
     echo "testing read_config"
