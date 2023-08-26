@@ -397,6 +397,9 @@ mysql_cmd () {
         db=$(echo ${db} | sed 's/-D //g')
     fi
 
+    debug "mysql_cmd: given opts: $@"
+    debug "building cmd: ${cmd} ${host} ${port} ${user} ${pass} ${db}"
+
     printf "${cmd} ${host} ${port} ${user} ${pass} ${db}" 
 }
 
