@@ -454,6 +454,7 @@ main() {
     echo "testing password generation"
     generate_password a 10
     echo $a
+    unset a
     generate_password new_pass 15
     echo $new_pass
     debug "new password: ${new_pass}"
