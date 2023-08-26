@@ -237,7 +237,7 @@ backup () {
     mkdir "${domain}-bak"
 
     debug "...dumping database ${db} for ${domain}"
-    "mysql_cmd ${host} ${port} ${db} ${user} ${pass} ${dump}" > "${backupfile}"
+    $(mysql_cmd "${host} ${port} ${db} ${user} ${pass} ${dump}") > "${backupfile}"
     # mysqldump --add-drop-table -u root -p $NAME | bzip2 -c > $BACKUPFILE && echo Wrote $BACKUPFILE
 
     debug "...grabbing config file ${cfgfile}"
@@ -279,7 +279,7 @@ while true; do
   read yn
   case $yn in
     y* | Y* ) break ;;
-    [nN]* )   finish "0" "" ; break ;;
+    [nN]* )   finish 0 ; break ;;
     * ) echo "unknown response.  Asking again" ;;
   esac
 done
@@ -293,7 +293,7 @@ parse_args () {
     while [[ ${OPTIND} -le "$#" ]]; do
         if getopts ${optstring} arg; then
             case ${arg} in
-                h) usage; finish 0 "" ;;
+                h) usage; finish 0 ;;
                 b) BACKUP=1 ;;
                 d) DESTROY=1 ;;
                 n) WP_DB_NAME="${OPTARG}" ;;
@@ -304,7 +304,7 @@ parse_args () {
                 U) MYSQL_USER="${OPTARG}" ;;
                 P) MYSQL_PASS="${OPTARG}" ;;
                 v) DEBUG=yes ;;
-                V) version; finish 0 "" ;;
+                V) version; finish 0 ;;
                 *) finish "${ERR_UNK_OPT}" "unknown option: -${OPTARG}" ;;
             esac
         else
@@ -438,7 +438,7 @@ main() {
     if [[ $BACKUP ]] ; then
         read_config "${DOMAIN}"
         backup "${DOMAIN}"
-        finish "0" ""
+        finish 0
     fi
 
 
@@ -454,20 +454,6 @@ main() {
 
 
 
-    echo "testing password generation"
-    generate_password a 10
-    echo $a
-    unset a
-    generate_password new_pass 15
-    echo $new_pass
-    debug "new password: ${new_pass}"
-    exit 0
-
-
-    echo "testing read_config"
-    read_config $DOMAIN
-    exit 0
-
     if [ ! $DB_HOST ]; then
         DB_HOST="localhost"
     fi
@@ -482,7 +468,7 @@ main() {
     
     if [ $DESTROY ] ; then
         destroy
-        finish "0" ""
+        finish 0
     fi
 
     checkforexistingsetup
