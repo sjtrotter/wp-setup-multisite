@@ -282,7 +282,7 @@ destroy() {
     debug "...removing config ${cfgfile}"
     rm -rf "${cfgfile}"
 
-    printf "Config ${cfgfile} removed, and database ${db} dropped."
+    printf "Config ${cfgfile} removed, and database ${db} dropped.\nRemove the user ${user} from database if you wish."
 }
 
 prompt() {
@@ -300,7 +300,7 @@ done
 
 parse_args () {
 
-    optstring=":hbdn:u:p:N:U:P:vV"
+    optstring=":hbdfn:u:p:N:U:P:vV"
 
     while [[ ${OPTIND} -le "$#" ]]; do
         if getopts ${optstring} arg; then
@@ -357,7 +357,7 @@ read_config () {
     if [[ ! "${domain}" ]]; then finish "${ERR_NO_ARG}" "no domain given to pull config"; fi
     if [[ ! -f "${cfgfile}" ]]; then finish "${ERR_NO_SUCH_FILE}" "config ${cfgfile} does not exist"; fi
 
-    if [[ "$(grep '\#' ${cfgfile})" != "${TAGLINE}" ]]; then
+    if [[ "$(grep '\#' ${cfgfile})" != "${TAGLINE}" && ! "${FORCE}" ]]; then
         finish "${ERR_CONFIG_MISMATCH}" "config edited or not written by this script"
     fi
 
