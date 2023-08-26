@@ -126,7 +126,7 @@ EOF
 generate_password () {
     local length="$1"
     local password=
-    if [[ ! "${length}" ]]; then finish "${ERR_NO_ARG}" "no length given for password"
+    if [[ ! "${length}" ]]; then finish "${ERR_NO_ARG}" "no length given for password"; fi
     while [[ "${n:=1}" -le "${length}" ]]; do
         password="${password}${PASSWD_GEN:$(($RANDOM%${#PASSWD_GEN})):1}"
         let n+=1
