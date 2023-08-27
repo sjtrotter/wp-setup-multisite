@@ -611,7 +611,7 @@ create_database () {
         echo "IDENTIFIED BY '${wp_pass}';" >> "${QUERY}"
         echo "FLUSH PRIVILEGES;" >> "${QUERY}"
 
-        $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
+        mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}" < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
 
         debug "    SQL query:"
         debug "$(cat ${QUERY})"
