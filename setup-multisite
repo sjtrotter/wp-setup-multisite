@@ -558,6 +558,7 @@ create_database () {
 
         $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
         if [[ $(egrep ^ERROR tmp.result) ]]; then
+            debug "$(cat tmp.sql)"
             debug "$(cat tmp.result)"
             rm -rf tmp.sql tmp.result
             finish "${ERR_MYSQL_ERROR}" "mysql query failed when creating database - check creds"
