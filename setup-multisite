@@ -525,8 +525,6 @@ main() {
         WP_CONTENT["${key}"]="${!wpvar}"
     done
 
-    for $
-
     debug "WP_CONTENT[DB_NAME]=${WP_CONTENT[DB_NAME]} WP_CONTENT[DB_USER]=${WP_CONTENT[DB_USER]}"
     debug "WP_CONTENT[DB_PASSWORD]=${WP_CONTENT[DB_PASSWORD]} WP_CONTENT[DB_HOST]=${WP_CONTENT[DB_HOST]}"
 
