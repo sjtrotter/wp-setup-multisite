@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# THIS SCRIPT CURRENTLY DOES NOT WORK.
-# -- Currently rewriting to implement new options.
+# THIS SCRIPT CURRENTLY DOES NOT WORK--completely.
+# -- It seems to work fine if you have a default install:
+#    i.e. mysql, localhost, with root local login;
+#    but not if you pass a mysql admin.
 
 # TODO
 # ===========
@@ -20,8 +22,14 @@
 # [  done  ] read-in settings from file
 # [  done  ] destroy - use configs from file to destroy
 # ==========
-# [  100%  ] - v0.14.0-rc
-
+# [  100%  ] - done, at v0.14.0-rc
+# ==========
+#    BUGS   
+# ==========
+# [ inwork ] functionality to ask user for mysql password does not seem to work
+# [  todo  ] mysql check for creating database does not seem to work
+# ==========
+# [    0%  ] - v0.14.0
 
 # This script is versioned with Semantic Versioning. https://semver.org
 readonly VERSION="0.14.0-rc"
