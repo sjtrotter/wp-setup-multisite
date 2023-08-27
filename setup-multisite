@@ -396,6 +396,7 @@ mysql_cmd () {
 
     debug "mysql_cmd: given opts: $@"
     debug "cmd=${cmd} host=${host} port=${port} user=${user} pass=${pass} db=${db} dump=${dump}"
+    debug "    mysql cmd: ${cmd} ${host} ${port} ${user} ${pass} ${db}"
 
     printf "${cmd} ${host} ${port} ${user} ${pass} ${db}" 
 }
