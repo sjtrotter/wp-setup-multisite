@@ -59,6 +59,8 @@ readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
 readonly PASSWD_GEN="[{%+-./:=_}]0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 readonly TAGLINE="# Created by $0"
+readonly QUERY="/tmp/sql"
+readonly RESULT="/tmp/result"
 # Colors
 readonly ANSI_RED="\033[1;31m"
 readonly ANSI_CLEAR="\033[0m"
@@ -178,19 +180,24 @@ check_if_existing () {
     fi
 
     debug "...attempting to connect to database at ${host}:${port}"
-    printf "show databases;" > tmp.sql
-    $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
-    if [[ $(egrep ^ERROR tmp.result) ]]; then
-        debug "$(cat tmp.result)"
-        rm -rf tmp.sql tmp.result
+
+    printf "show databases;" > "${QUERY}"
+
+    $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
+
+    debug "    SQL Query:\n$(cat ${QUERY})"
+    rm "${QUERY}" 
+    debug "    Result:\n$(cat ${RESULT})"
+
+    if [[ $(egrep ^ERROR "${RESULT}") ]]; then
+        rm "${RESULT}"
         finish "${ERR_MYSQL_ERROR}" "mysql query failed when checking for database - check creds"
     fi
-    rm tmp.sql
 
     debug "...testing if database '${db}' is in results"
-    if [[ $(egrep ^${db}$ tmp.result) ]]; then
+    if [[ $(egrep ^"${db}"$ "${RESULT}") ]]; then
         if [[ ! "${FORCE}" ]]; then
-            rm tmp.result
+        rm "${RESULT}"
             finish "${ERR_DB_EXISTS}" "database '${db}' already exists; -f to force"
         else
             debug "...database '${db}' exists, but force is set; make sure it is empty"
@@ -199,7 +206,7 @@ check_if_existing () {
     else
         debug "...not found"
     fi
-    rm tmp.result
+    rm "${RESULT}"
 
     debug "...testing if content directory ${WP_SRV_DIR}/${domain} exists"
     if [[ -d "${WP_SRV_DIR}/${domain}" ]]; then
@@ -267,13 +274,18 @@ destroy() {
     fi
 
     debug "...dropping database ${db}"
-    printf "DROP DATABASE ${db};" > /tmp/dropfile
-    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}") < /tmp/dropfile 2>&1 | tee tmp.result > /dev/null
-    if [[ $(egrep ^ERROR tmp.result) ]]; then
-        rm /tmp/dropfile tmp.result
+    printf "DROP DATABASE ${db};" > "${QUERY}"
+    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}") < "${QUERY}" 2>&1 | tee "${RESULT}" > /dev/null
+
+    debug "    SQL Query:\n$(cat ${QUERY})"
+    rm "${QUERY}" 
+    debug "    Result:\n$(cat ${RESULT})"
+
+    if [[ $(egrep ^ERROR "${RESULT}") ]]; then
+        rm "${RESULT}"
         finish "${ERR_MYSQL_ERROR}" "mysql drop failed - check creds and database"
     fi
-    rm -rf /tmp/dropfile tmp.result
+    rm -rf "${RESULT}"
     echo "Database ${db} dropped; remove the user ${user} from database if you wish."
 
     debug "...removing config ${cfgfile}"
@@ -394,8 +406,8 @@ mysql_cmd () {
         db=$(echo ${db} | sed 's/-D //g')
     fi
 
-    debug "mysql_cmd: given opts: $@"
-    debug "cmd=${cmd} host=${host} port=${port} user=${user} pass=${pass} db=${db} dump=${dump}"
+    debug "    mysql_cmd: given opts: $@"
+    debug "    vars: cmd=${cmd} host=${host} port=${port} user=${user} pass=${pass} db=${db} dump=${dump}"
     debug "    mysql cmd: ${cmd} ${host} ${port} ${user} ${pass} ${db}"
 
     printf "${cmd} ${host} ${port} ${user} ${pass} ${db}" 
@@ -561,19 +573,22 @@ create_database () {
 
         debug "...attempting to create database ${db} at ${host}:${port}"
 
-        echo "CREATE DATABASE ${db};" > tmp.sql
+        echo "CREATE DATABASE ${db};" > "${QUERY}"
         echo "GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER \
-                ON ${db}.* TO '${wp_user}'@'${host}' IDENTIFIED BY '${wp_pass}';" >> tmp.sql
-        echo "FLUSH PRIVILEGES;" >> tmp.sql
+                ON ${db}.* TO '${wp_user}'@'${host}' IDENTIFIED BY '${wp_pass}';" >> "${QUERY}"
+        echo "FLUSH PRIVILEGES;" >> "${QUERY}"
 
-        $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
-        if [[ $(egrep ^ERROR tmp.result) ]]; then
-            debug "$(cat tmp.sql)"
-            debug "$(cat tmp.result)"
-            rm -rf tmp.sql tmp.result
+        $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
+
+        debug "    SQL query:\n$(cat ${QUERY})"
+        rm "${QUERY}"
+        debug "    Result: \n$(cat ${RESULT})"
+
+        if [[ $(egrep ^ERROR "${RESULT}") ]]; then
+            rm "${RESULT}"
             finish "${ERR_MYSQL_ERROR}" "mysql query failed when creating database - check creds"
         fi
-        rm tmp.sql tmp.result
+        rm "${RESULT}"
         echo "Database '${db}' created."
     else
         echo "Database '${db}' exists; force is set. You should make sure it's empty." >&2
