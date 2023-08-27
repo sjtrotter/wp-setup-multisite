@@ -59,13 +59,6 @@ unset BACKUP
 unset DESTROY
 unset FORCE
 unset WP_CONFIG
-unset WP_DB_NAME
-unset WP_DB_USER
-unset WP_DB_PASS
-unset MYSQL_HOST
-unset MYSQL_PORT
-unset MYSQL_USER
-unset MYSQL_PASS
 # Define vars
 ARGS=()
 readonly DB_EXISTS="false"
@@ -505,7 +498,7 @@ set_wp_user () {
 main() {
     parse_args "$@"
 
-# WP_CONTENT[key] = "${value}"
+# WP_CONFIG[key] = "${value}"
 # 'DB_NAME'      # WP_DB_NAME
 # 'DB_USER'      # WP_DB_USER
 # 'DB_PASSWORD   # WP_DB_PASS
@@ -519,25 +512,11 @@ main() {
     debug "WP_DB_NAME=${WP_DB_NAME} WP_DB_USER=${WP_DB_USER} WP_DB_PASS=${WP_DB_PASS}"
     debug "MYSQL_HOST=${MYSQL_HOST} MYSQL_PORT=${MYSQL_PORT} MYSQL_USER=${MYSQL_USER} MYSQL_PASS=${MYSQL_PASS}"
 
-    WP_CONTENT[DB_NAME]="${WP_DB_NAME}"
-    # WP_CONTENT[DB_USER]=${WP_DB_USER}
-    # WP_CONTENT[DB_PASSWORD]=${WP_DB_PASS}
-    # WP_CONTENT[DB_HOST]=${MYSQL_HOST}
+    WP_CONFIG[DB_NAME]="${WP_DB_NAME}"
+    WP_CONTENT[DB_USER]=${WP_DB_USER}
+    WP_CONTENT[DB_PASSWORD]=${WP_DB_PASS}
+    WP_CONTENT[DB_HOST]=${MYSQL_HOST}
 
-    # for key in "DB_NAME"; do
-    #     wpvar="WP_${key}"
-    #     debug "trying to set WP_CONTENT[${key}] to ${wpvar} value ${!wpvar}"
-    #     WP_CONTENT["${key}"]="${!wpvar}"
-    # done
-
-    # debug "WP_CONTENT[DB_NAME]=${WP_CONTENT[DB_NAME]} WP_CONTENT[DB_USER]=${WP_CONTENT[DB_USER]}"
-    # debug "WP_CONTENT[DB_PASSWORD]=${WP_CONTENT[DB_PASSWORD]} WP_CONTENT[DB_HOST]=${WP_CONTENT[DB_HOST]}"
-
-    debug "${WP_CONTENT[@]}"
-for key in ${!WP_CONTENT[@]}
-do
-  debug "${key}, ${WP_CONTENT[${key}]}"
-done
 
     DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
 
