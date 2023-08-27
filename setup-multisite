@@ -257,7 +257,7 @@ check_if_existing () {
     rm tmp.result
 
     debug "...testing if content directory ${WP_SRV_DIR}/${domain} exists"
-    if [[ -d "${WP_SRV_DIR}/${domain} "]]; then
+    if [[ -d "${WP_SRV_DIR}/${domain}" ]]; then
         if [[ ! "${FORCE}" ]]; then
             finish "${ERR_SRV_DIR_EXISTS}" "content directory ${WP_SRV_DIR}/${domain} already exists"
         else
