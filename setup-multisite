@@ -221,6 +221,7 @@ checkforexistingsetup() {
 
 check_if_existing () {
     debug "checking for existing setup..."
+    debug "${WP_CONTENT[@]}"
     local domain="$1"
     local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
     local host="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f1)"
