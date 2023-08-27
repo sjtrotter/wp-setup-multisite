@@ -26,13 +26,13 @@
 # ==========
 #    BUGS   
 # ==========
-# [ inwork ] functionality to ask user for mysql password does not seem to work
-# [  todo  ] mysql check for creating database does not seem to work
+# [  done  ] functionality to ask user for mysql password does not seem to work
+# [  done  ] mysql check for creating database does not seem to work
 # ==========
-# [    0%  ] - v0.14.0
+# [  100%  ] - v0.14.2
 
 # This script is versioned with Semantic Versioning. https://semver.org
-readonly VERSION="0.14.0-rc"
+readonly VERSION="0.14.2"
 # Errors
 readonly ERR_UNK_OPT="64"
 readonly ERR_TOO_MANY_ARGS="65"
@@ -239,9 +239,9 @@ backup () {
     mkdir "${domain}-bak"
 
     debug "...dumping database ${db} for ${domain}"
-    echo "MYSQL User ${user}"
-    echo "Use password: ${pass}"
-    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "ask" "${dump}") 2>&1 | tee "${backupfile}" >/dev/null
+    # echo "MYSQL User ${user}"
+    # echo "Use password: ${pass}"
+    mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" "${dump}" 2>&1 | tee "${backupfile}" >/dev/null
     if [[ $(egrep ^ERROR ${backupfile}) ]]; then
         rm -rf "${domain}-bak"
         finish "${ERR_MYSQL_ERROR}" "mysqldump failed - check creds and database"
