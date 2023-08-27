@@ -531,21 +531,23 @@ set_mysql () {
         elif [[ "${MYSQL_PORT}" -gt 65535 || "${MYSQL_PORT}" -lt 1 ]]; then
             finish "${ERR_PORT_INVALID}" "given port '${MYSQL_PORT}' is out of range"
         fi
-    else
-        debug "...no port given, setting to default 3306"
-        MYSQL_PORT="3306"
-    fi
-    
-    debug "...testing connection to mysql: ${MYSQL_HOST}:${MYSQL_PORT}"
-    $NC -zv "${MYSQL_HOST}" "${MYSQL_PORT}" 2>&1 | tee tmp.result > /dev/null
-    if [[ ! $(egrep open$ tmp.result) ]]; then
-        debug "$(cat tmp.result)"
+        debug "...testing connection to mysql: ${MYSQL_HOST}:${MYSQL_PORT}"
+        $NC -zv "${MYSQL_HOST}" "${MYSQL_PORT}" 2>&1 | tee tmp.result > /dev/null
+        if [[ ! $(egrep open$ tmp.result) ]]; then
+            debug "$(cat tmp.result)"
+            rm tmp.result
+            finish "${ERR_MYSQL_CANNOT_CONNECT}" "cannot connect to mysql host '${MYSQL_HOST}' on port ${MYSQL_PORT}"
+        fi
         rm tmp.result
-        finish "${ERR_MYSQL_CANNOT_CONNECT}" "cannot connect to mysql host '${MYSQL_HOST}' on port ${MYSQL_PORT}"
+        WP_CONFIG[DB_HOST]="${MYSQL_HOST}:${MYSQL_PORT}"
+        debug "set WP_CONFIG[DB_HOST] to ${MYSQL_HOST}:${MYSQL_PORT}"
+    else
+        debug "...no port given, using mysql default settings"
+        WP_CONFIG[DB_HOST]="${MYSQL_HOST}"
+        debug "set WP_CONFIG[DB_HOST] to ${MYSQL_HOST}"
     fi
-    rm tmp.result
-    WP_CONFIG[DB_HOST]="${MYSQL_HOST}:${MYSQL_PORT}"
-    debug "set WP_CONFIG[DB_HOST] to ${MYSQL_HOST}:${MYSQL_PORT}"
+
+
 }
 
 set_wp_content_dir () {
