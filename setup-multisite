@@ -441,7 +441,7 @@ mysql_cmd () {
     debug "    vars: cmd=${cmd} host=${host} port=${port} user=${user} pass=${pass} db=${db} dump=${dump}"
     debug "    mysql cmd: ${cmd} ${host} ${port} ${user} ${pass} ${db}"
 
-    printf "${cmd} ${host} ${port} ${user} ${pass} ${db}" 
+    ${cmd} ${host} ${port} ${user} ${pass} ${db} 
 }
 
 set_wp_name () {
