@@ -42,6 +42,7 @@ readonly ERR_CONFIG_MISMATCH="76"
 readonly ERR_NO_SUCH_FILE="77"
 readonly ERR_DB_EXISTS="78"
 readonly ERR_NO_NETCAT="79"
+readonly ERR_MYSQL_CANNOT_CONNECT="80"
 # Script-specific constants
 readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_SRV_DIR="/srv/www/wp-content"
@@ -538,8 +539,9 @@ set_mysql () {
     debug "...testing connection to mysql: ${MYSQL_HOST}:${MYSQL_PORT}"
     $NC -zv "${MYSQL_HOST} ${MYSQL_PORT}" 2>&1 | tee tmp.result > /dev/null
     if [[ ! $(egrep open$ tmp.result) ]]; then
+        debug "$(cat tmp.result)"
         rm tmp.result
-        finish "${ERR_MYSQL_CONN_REFUSED}" "cannot connect to mysql host '${MYSQL_HOST}' on port ${MYSQL_PORT}"
+        finish "${ERR_MYSQL_CANNOT_CONNECT}" "cannot connect to mysql host '${MYSQL_HOST}' on port ${MYSQL_PORT}"
     fi
     rm tmp.result
     WP_CONFIG[DB_HOST]="${MYSQL_HOST}:${MYSQL_PORT}"
