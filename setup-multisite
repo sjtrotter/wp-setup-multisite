@@ -43,6 +43,7 @@ readonly ERR_NO_SUCH_FILE="77"
 readonly ERR_DB_EXISTS="78"
 readonly ERR_NO_NETCAT="79"
 readonly ERR_MYSQL_CANNOT_CONNECT="80"
+readonly ERR_CONFIG_MISSING="81"
 # Script-specific constants
 readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_SRV_DIR="/srv/www/wp-content"
@@ -60,17 +61,14 @@ unset BACKUP
 unset DESTROY
 unset FORCE
 unset WP_CONFIG
+unset DB_EXISTS
+unset CFG_EXISTS
+unset SRV_EXISTS
 # Define vars
 ARGS=()
-readonly DB_EXISTS="false"
-declare -A WP_CONFIG
-# DB_NAME - passed at cli, or generated from fqdn
-# DB_USER - passed at cli, or generated from fqdn - DIFFERENT from dbadmin
-# DB_PASSWORD - Generated? or allow user to set at cli
-# DB_HOST - passed at cli, or assumed localhost
-# SECRET_KEY - Generated
-# WP_CONTENT_DIR - Generated from FQDN
+declare -A WP_CONFIG=(["FS_METHOD"]="direct")
 
+# Define functions
 finish () {
     local rc="$1"
     shift
@@ -148,72 +146,6 @@ generate_password () {
     _return="${_password}"
 }
 
-
-checkforexistingsetup() {
-    if [ -f $CONFIG_FILE ] ; then
-        echo WARNING: $CONFIG_FILE exists!
-        finish "${ERR_CONFIG_EXISTS}" "config exists: ${CONFIG_FILE}"
-    fi
-    
-    # Generate a random password without Perl
-    # MATRIX=",.[]<>:{}!@$^&*()_+-=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    if [ ! $MYSQLUSER ]; then
-        LENGTH="8"
-        while [ "${n:=1}" -le "$LENGTH" ]
-        do
-            DB_PASSWORD="$DB_PASSWORD${PASSWD_GEN:$(($RANDOM%${#PASSWD_GEN})):1}"
-            let n+=1
-        done
-        DB_USER=$NAME
-    else
-        DB_USER=$MYSQLUSER
-        echo "Enter MySQL password for user $DB_USER."
-        read -p "> " DB_PASSWORD
-    fi
-    
-    LENGTH="50"
-    while [ "${n:=1}" -le "$LENGTH" ]
-    do
-        SECRET_KEY="$SECRET_KEY${PASSWD_GEN:$(($RANDOM%${#PASSWD_GEN})):1}"
-        let n+=1
-    done
-    
-    if [ ! $DB_DB ]; then
-        DB_NAME=$NAME
-    else
-        DB_NAME=$DB_DB
-    fi
-
-    # Write the config file for wordpress
-
-    # REPLACEMENT CODE TO BE USED WHEN ASSOCIATIVE ARRAY IS WORKING
-    # CONFIG_DATA="<?php\n"
-    # CONFIG_DATA="${CONFIG_DATA}${TAGLINE}\n"
-    # for key in ${!WP_CONFIG[@]}; do
-    #     CONFIG_DATA="${CONFIG_DATA}    define('${key}', '${WP_CONFIG[key]}');\n"
-    # done
-    # CONFIG_DATA="${CONFIG_DATA}    define('FS_METHOD', 'direct');\n"
-    # CONFIG_DATA="${CONFIG_DATA}?>\n"
-    # printf "${CONFIG_DATA}" > "${CONFIG_FILE}"
-
-    printf "<?php\n" >> $CONFIG_FILE
-    printf "# Created by $0\n" >> $CONFIG_FILE
-    printf "define('DB_NAME', '$DB_NAME');\n" >> $CONFIG_FILE
-    printf "define('DB_USER', '$DB_USER');\n" >> $CONFIG_FILE
-    printf "define('DB_PASSWORD', '$DB_PASSWORD');\n" >> $CONFIG_FILE
-    printf "define('DB_HOST', '$DB_HOST');\n" >> $CONFIG_FILE
-    printf "define('SECRET_KEY', '$SECRET_KEY');\n" >> $CONFIG_FILE
-    printf "define('WP_CONTENT_DIR', '$CONTENT');\n" >> $CONFIG_FILE
-    printf "define('FS_METHOD', 'direct');\n" >> $CONFIG_FILE
-    printf "?>\n" >> $CONFIG_FILE
-    # REPLACEMENT CODE ENDS HERE
-
-    # Set permissions
-    chmod 640 "${CONFIG_FILE}"
-    chgrp www-data "${CONFIG_FILE}"
-    echo $CONFIG_FILE written
-}
-
 check_if_existing () {
     debug "checking for existing setup..."
     local domain="$1"
@@ -230,7 +162,7 @@ check_if_existing () {
         if [[ ! "${FORCE}" ]]; then
             finish "$ERR_CONFIG_EXISTS" "config file already exists; -f to force"
         else
-            echo "Config ${cfgfile} exists, but force is set. Overwriting config."
+            debug "Config ${cfgfile} exists, but force is set; will overwrite"
         fi
     else
         debug "...not found"
@@ -240,6 +172,7 @@ check_if_existing () {
     printf "show databases;" > tmp.sql
     $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
     if [[ $(egrep ^ERROR tmp.result) ]]; then
+        debug "$(cat tmp.result)"
         rm -rf tmp.sql tmp.result
         finish "${ERR_MYSQL_ERROR}" "mysql query failed when checking for database - check creds"
     fi
@@ -251,7 +184,8 @@ check_if_existing () {
             rm tmp.result
             finish "${ERR_DB_EXISTS}" "database '${db}' already exists; -f to force"
         else
-            echo "Database '${db}' exists, but force is set. You should make sure it's empty." >&2
+            debug "...database '${db}' exists, but force is set; make sure it is empty"
+            DB_EXISTS="true"
         fi
     else
         debug "...not found"
@@ -261,30 +195,15 @@ check_if_existing () {
     debug "...testing if content directory ${WP_SRV_DIR}/${domain} exists"
     if [[ -d "${WP_SRV_DIR}/${domain}" ]]; then
         if [[ ! "${FORCE}" ]]; then
-            finish "${ERR_SRV_DIR_EXISTS}" "content directory ${WP_SRV_DIR}/${domain} already exists"
+            finish "${ERR_SRV_DIR_EXISTS}" "content directory ${WP_SRV_DIR}/${domain} already exists; -f to force"
         else
-            echo "Content directory ${WP_SRV_DIR}/${domain} exists, but force is set. Removing directory."
+            debug "...content directory ${WP_SRV_DIR}/${domain} exists, but force is set; will remove directory."
             rm -rf "${WP_SRV_DIR}/${domain}"
         fi
     else
         debug "...not found"
     fi
     debug "checks complete"
-}
-
-create_database () {
-    
-if [ ! $DB_DB ]; then
-    MYSQLCOMMAND="mysql -u $DB_USER -p -h $DB_HOST"
-    $MYSQLCOMMAND <<EOF
-CREATE DATABASE $NAME;
-GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER,LOCK
-ON $DB_NAME.*
-TO '$DB_USER'@'$DB_HOST'
-IDENTIFIED BY '$DB_PASSWORD';
-FLUSH PRIVILEGES;
-EOF
-fi
 }
 
 backup () {
@@ -325,6 +244,7 @@ destroy() {
     debug "destroying site..."
     local domain="$1"
     local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
+    local contentdir="${WP_CONFIG[WP_CONTENT_DIR]}"
     local host="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f1)"
     local port="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f2)"
     local db="${WP_CONFIG[DB_NAME]}"
@@ -345,23 +265,31 @@ destroy() {
         finish "${ERR_MYSQL_ERROR}" "mysql drop failed - check creds and database"
     fi
     rm -rf /tmp/dropfile tmp.result
+    echo "Database ${db} dropped; remove the user ${user} from database if you wish."
 
     debug "...removing config ${cfgfile}"
     rm -rf "${cfgfile}"
+    echo "Config ${cfgfile} removed."
 
-    printf "Config ${cfgfile} removed, and database ${db} dropped.\nRemove the user ${user} from database if you wish.\n"
+    if [[ "${contentdir}" == "/var/lib/wordpress/wp-content" ]]; then
+        echo "Content directory ${contentdir} is the main wp-content; will not remove."
+    else
+        debug "...removing content directory ${contentdir}"
+        rm -rf "${contentdir}"
+        echo "Content directory ${contentdir} removed."
+    fi
 }
 
-prompt() {
-while true; do
-  echo -n "Are you sure? (y/n) "
-  read yn
-  case $yn in
-    [yY]* ) break ;;
-    [nN]* ) finish 0 ; break ;;
-    * ) echo "unknown response.  Asking again" ;;
-  esac
-done
+prompt () {
+    while true; do
+    echo -n "Are you sure? (y/n) "
+    read yn
+    case $yn in
+        [yY]* ) break ;;
+        [nN]* ) finish 0 ; break ;;
+        * ) echo "unknown response.  Asking again" ;;
+    esac
+    done
 }
 
 
@@ -554,16 +482,93 @@ set_wp_content_dir () {
 create_config () {
     local domain="$1"
     local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
+    debug "writing config file: '${cfgfile}'"
 
+    if [[ "${CFG_EXISTS}" ]]; then
+        echo "Config ${cfgfile} exists, but force is set. Overwriting config."
+    fi
+
+    local data="<?php\n"
+    data="${data}${TAGLINE}\n"
+    for key in ${!WP_CONFIG[@]}; do
+        data="${data}    define('${key}', '${WP_CONFIG[key]}');\n"
+    done
+    data="${data}?>\n"
+    printf "${data}" > "${cfgfile}"
+
+    # Set permissions
+    chmod 640 "${cfgfile}"
+    chgrp www-data "${cfgfile}"
+    echo "Config file ${cfgfile} written."
+}
+
+create_srvdir () {
+    local domain="$1"
+    local contentdir="${WP_SRV_DIR}/${domain}"
+    debug "creating content directory ${contentdir}"
 
     if [[ ! -d "${WP_SRV_DIR}" ]]; then
         debug "...creating root content directory '${WP_SRV_DIR}'"
         mkdir -p "${WP_SRV_DIR}"
     fi
-    cp -r "${WP_CONTENT_DIR_ORIG}" "${WP_SRV_DIR}/${domain}"
-    debug "...created content directory ${WP_SRV_DIR}/${domain}"
 
+    if [[ "${SRV_EXISTS}" ]]; then
+        echo "Content directory ${contentdir} exists, but force is set. Removing directory."
+        rm -rf "${contentdir}"
+    fi
+
+    cp -r --preserve=mode,ownership "${WP_CONTENT_DIR_ORIG}" "${WP_SRV_DIR}/${domain}"
+    echo "Content directory ${WP_SRV_DIR}/${domain} created."
 }
+
+validate_config () {
+    # Validate WP_CONFIG variable
+    # mode = backup | destroy | create
+    local mode="$1"
+    for key in "DB_NAME" "DB_USER" "DB_PASSWORD" "DB_HOST"; do
+        if [[ ! "${WP_CONFIG[${key}]}" ]]; then finish "${ERR_CONFIG_MISSING}" "config missing: ${key}"; fi
+    done
+    if [[ "${mode}" == "destroy" || "${mode}" == "create" ]]; then
+        if [[ ! "${WP_CONFIG[WP_CONTENT_DIR]}" ]]; then finish "${ERR_CONFIG_MISSING}" "config missing: WP_CONTENT_DIR"; fi
+    fi
+    if [[ "${mode}" == "create" ]]; then
+        if [[ ! "${WP_CONFIG[SECRET_KEY]}" ]]; then finish "${ERR_CONFIG_MISSING}" "config missing SECRET_KEY"; fi
+        if [[ ! "${WP_CONFIG[FS_METHOD]}" ]]; then finish "${ERR_CONFIG_MISSING}" "config missing FS_METHOD"; fi
+    fi
+}
+
+create_database () {
+    local host="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f1)"
+    local port="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f2)"
+    local db="${WP_CONFIG[DB_NAME]}"
+    local wp_user="${WP_CONFIG[DB_USER]}"
+    local wp_pass="${WP_CONFIG[DB_PASSWORD]}"
+    local user="${MYSQL_USER}"
+    local pass="${MYSQL_PASS}"
+    if [[ "${host}" == "${port}" ]]; then port="none"; fi
+
+    if [[ ! "${DB_EXISTS}" ]]; then
+
+        debug "...attempting to create database ${db} at ${host}:${port}"
+
+        echo "CREATE DATABASE ${db};" > tmp.sql
+        echo "GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER \
+                ON ${db}.* TO '${wp_user}'@'${host}' IDENTIFIED BY '${wp_pass}';" >> tmp.sql
+        echo "FLUSH PRIVILEGES;" >> tmp.sql
+
+        $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
+        if [[ $(egrep ^ERROR tmp.result) ]]; then
+            debug "$(cat tmp.result)"
+            rm -rf tmp.sql tmp.result
+            finish "${ERR_MYSQL_ERROR}" "mysql query failed when creating database - check creds"
+        fi
+        rm tmp.sql tmp.result
+
+    else
+        echo "Database '${db}' exists; force is set. You should make sure it's empty." >&2
+    fi
+}
+
 
 main() {
     parse_args "$@"
@@ -581,6 +586,7 @@ main() {
     if [[ $BACKUP ]] ; then
         echo "Backing up ${DOMAIN} config and database..."
         read_config "${DOMAIN}"
+        validate_config "backup"
         backup "${DOMAIN}"
         echo "Done."
         finish 0
@@ -589,6 +595,7 @@ main() {
     if [[ $DESTROY ]] ; then
         echo "Destroying ${DOMAIN} config and database..."
         read_config "${DOMAIN}"
+        validate_config "destroy"
         destroy "${DOMAIN}"
         echo "Done."
         finish 0
@@ -604,6 +611,9 @@ main() {
     set_wp_secret
     set_wp_content_dir "${DOMAIN}"
     check_if_existing "${DOMAIN}"
+    validate_config "create"
+    create_config "${DOMAIN}"
+    create_srvdir "${DOMAIN}"
 
 
  }
