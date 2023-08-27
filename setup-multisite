@@ -272,12 +272,6 @@ check_if_existing () {
     debug "checks complete"
 }
 
-create_config () {
-    local domain="$1"
-    local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
-
-}
-
 create_database () {
     
 if [ ! $DB_DB ]; then
@@ -551,16 +545,24 @@ set_mysql () {
 }
 
 set_wp_content_dir () {
-    debug "creating and setting wordpress content directory..."
+    debug "setting wordpress content directory..."
     local domain="$1"
+    WP_CONFIG[WP_CONTENT_DIR]="${WP_SRV_DIR}/${domain}"
+    debug "set WP_CONFIG[WP_CONTENT_DIR] to ${WP_SRV_DIR}/${domain}"
+}
+
+create_config () {
+    local domain="$1"
+    local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
+
+
     if [[ ! -d "${WP_SRV_DIR}" ]]; then
         debug "...creating root content directory '${WP_SRV_DIR}'"
         mkdir -p "${WP_SRV_DIR}"
     fi
     cp -r "${WP_CONTENT_DIR_ORIG}" "${WP_SRV_DIR}/${domain}"
     debug "...created content directory ${WP_SRV_DIR}/${domain}"
-    WP_CONFIG[WP_CONTENT_DIR]="${WP_SRV_DIR}/${domain}"
-    debug "set WP_CONFIG[WP_CONTENT_DIR] to ${WP_SRV_DIR}/${domain}"
+
 }
 
 main() {
