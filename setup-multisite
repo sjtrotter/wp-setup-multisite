@@ -41,13 +41,14 @@ readonly ERR_MYSQL_DB_TOO_LONG="75"
 readonly ERR_MYSQL_INVALID_CHAR="76"
 readonly ERR_CONFIG_MISMATCH="77"
 readonly ERR_NO_SUCH_FILE="78"
+readonly ERR_DB_EXISTS="79"
 # Script-specific constants
 readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_SRV_DIR="/srv/www/wp-content"
 readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
 readonly PASSWD_GEN="([{%+-./:=@_}])0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-
+readonly TAGLINE="# Created by $0"
 # Colors
 readonly ANSI_RED="\033[1;31m"
 readonly ANSI_CLEAR="\033[0m"
@@ -60,7 +61,7 @@ unset FORCE
 unset WP_CONFIG
 # Define vars
 ARGS=()
-TAGLINE="# Created by $0"
+readonly DB_EXISTS="false"
 declare -A WP_CONFIG
 # DB_NAME - passed at cli, or generated from fqdn
 # DB_USER - passed at cli, or generated from fqdn - DIFFERENT from dbadmin
@@ -211,9 +212,52 @@ checkforexistingsetup() {
     echo $CONFIG_FILE written
 }
 
-create() {
-# Create the database and user
-# Wordpress's install.php creates the tables btw
+check_if_existing () {
+    debug "checking for existing setup..."
+    local domain="$1"
+    local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
+    local host="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f1)"
+    local port="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f2)"
+    local db="${WP_CONFIG[DB_NAME]}"
+    local user="${WP_CONFIG[DB_USER]}"
+    local pass="${WP_CONFIG[DB_PASSWORD]}"
+    if [[ "${host}" == "${port}" ]]; then port="none"; fi
+
+    if [[ -f "${cfgfile}" ]]; then
+        if [[ ! "${FORCE}" ]]; then
+            finish "$ERR_CONFIG_EXISTS" "config file already exists"
+        else
+            debug "...config exists, but force is set. will overwrite"
+        fi
+    fi
+
+    printf "show databases;" > tmp.sql
+    $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
+    if [[ $(egrep ^ERROR tmp.result) ]]; then
+        rm -rf tmp.sql tmp.result
+        finish "${ERR_MYSQL_ERROR}" "mysql query failed when checking for database - check creds"
+    fi
+    rm tmp.sql
+
+    if [[ $(egrep ^${db}$ tmp.result) ]]; then
+        if [[ ! "${FORCE}" ]]; then
+            rm tmp.result
+            finish "${ERR_DB_EXISTS}" "database already exists"
+        else
+            echo "database ${db} exists, but force is set. you should make sure it's empty." >&2
+            rm tmp.result
+        fi
+    fi
+}
+
+create_config () {
+    local domain="$1"
+    local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
+
+}
+
+create_database () {
+    
 if [ ! $DB_DB ]; then
     MYSQLCOMMAND="mysql -u $DB_USER -p -h $DB_HOST"
     $MYSQLCOMMAND <<EOF
@@ -225,8 +269,6 @@ IDENTIFIED BY '$DB_PASSWORD';
 FLUSH PRIVILEGES;
 EOF
 fi
-
-echo Goto http://$DOMAIN to setup Wordpress
 }
 
 backup () {
@@ -244,8 +286,8 @@ backup () {
     mkdir "${domain}-bak"
 
     debug "...dumping database ${db} for ${domain}"
-    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" "${dump}") 2>&1> "${backupfile}"
-    if [[ $? -ne 0 ]]; then
+    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" "${dump}") 2>&1 | tee "${backupfile}" >/dev/null
+    if [[ $(egrep ^ERROR ${backupfile}) ]]; then
         rm -rf "${domain}-bak"
         finish "${ERR_MYSQL_ERROR}" "mysqldump failed - check creds and database"
     fi
@@ -281,8 +323,11 @@ destroy() {
 
     debug "...dropping database ${db}"
     printf "DROP DATABASE ${db};" > /tmp/dropfile
-    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}") < /tmp/dropfile 2>&1>/dev/null
-    if [[ $? -ne 0 ]]; then rm /tmp/dropfile; finish "${ERR_MYSQL_ERROR}" "mysql drop failed - check creds and database"; fi
+    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}") < /tmp/dropfile 2>&1 | tee tmp.result > /dev/null
+    if [[ $(egrep ^ERROR tmp.result) ]]; then
+        rm /tmp/dropfile tmp.result
+        finish "${ERR_MYSQL_ERROR}" "mysql drop failed - check creds and database"
+    fi
     rm -rf /tmp/dropfile
 
     debug "...removing config ${cfgfile}"
@@ -397,6 +442,7 @@ mysql_cmd () {
     if [[ "${db}" == "-D none" || "${db}" == "-D " ]]; then unset db; fi
     if [[ "${user}" == "-u none" || "${user}" == "-u " ]]; then unset user; fi
     if [[ "${pass}" == "-pnone" || "${pass}" == "-p" ]]; then unset pass; fi
+    if [[ "${pass}" == "-pask" ]]; then echo "MYSQL User ${user}"; pass="-p "; fi
 
     if [[ "${dump}" ]]; then
         cmd="${MYSQLDUMP} --single-transaction"
@@ -455,7 +501,19 @@ main() {
 # MYSQL_USER
 # MYSQL_PASS
 
+
+
+
+
+
     DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
+
+    # testing check_if_existing
+    check_if_existing "${DOMAIN}"
+    exit 0
+
+
+
 
     if [[ $BACKUP ]] ; then
         read_config "${DOMAIN}"
