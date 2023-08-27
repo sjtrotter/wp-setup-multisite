@@ -5,26 +5,26 @@
 
 # TODO
 # ===========
-# [ inwork ] reorganize current codebase (will be inwork until finished)
-# [ inwork ] implement debug verbosity (will be inwork until finished)
+# [  done  ] reorganize current codebase (will be inwork until finished)
+# [  done  ] implement debug verbosity (will be inwork until finished)
 # [  done  ] write parse_args
 # [  done  ] check number of args passed
 # [  done  ] sanitize FQDN
 # [  done  ] import finish, debug, version functions
 # [  done  ] hook imported functions into parse_args
 # [  done  ] utilize finish for all error exits
-# [ inwork ] prereqs - check for all needed commands, prompt to install? i.e. mysql
+# [  done  ] prereqs - check for all needed commands, prompt to install? i.e. mysql
 # [  done  ] prereqs - check for needed files, prompt to install? i.e. wordpress
-# [ inwork ] inputs - need to separate wordpress settings from database settings
-# [ inwork ] utilize associative array for wordpress settings
+# [  done  ] inputs - need to separate wordpress settings from database settings
+# [  done  ] utilize associative array for wordpress settings
 # [  done  ] read-in settings from file
 # [  done  ] destroy - use configs from file to destroy
 # ==========
-# [   64%  ] - v0.9.0
+# [  100%  ] - v0.14.0-rc
 
 
 # This script is versioned with Semantic Versioning. https://semver.org
-readonly VERSION="0.9.0"
+readonly VERSION="0.14.0-rc"
 # Errors
 readonly ERR_UNK_OPT="64"
 readonly ERR_TOO_MANY_ARGS="65"
@@ -565,7 +565,7 @@ create_database () {
             finish "${ERR_MYSQL_ERROR}" "mysql query failed when creating database - check creds"
         fi
         rm tmp.sql tmp.result
-
+        echo "Database '${db}' created."
     else
         echo "Database '${db}' exists; force is set. You should make sure it's empty." >&2
     fi
