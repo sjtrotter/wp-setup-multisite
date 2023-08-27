@@ -59,6 +59,13 @@ unset BACKUP
 unset DESTROY
 unset FORCE
 unset WP_CONFIG
+unset WP_DB_NAME
+unset WP_DB_USER
+unset WP_DB_PASS
+unset MYSQL_HOST
+unset MYSQL_PORT
+unset MYSQL_USER
+unset MYSQL_PASS
 # Define vars
 ARGS=()
 readonly DB_EXISTS="false"
