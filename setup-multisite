@@ -185,9 +185,11 @@ check_if_existing () {
 
     $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
 
-    debug "    SQL Query:\n$(cat ${QUERY})"
+    debug "    SQL Query:"
+    debug < cat "${QUERY}"
     rm "${QUERY}" 
-    debug "    Result:\n$(cat ${RESULT})"
+    debug "    Result:"
+    debug < cat "${RESULT}"
 
     if [[ $(egrep ^ERROR "${RESULT}") ]]; then
         rm "${RESULT}"
@@ -277,9 +279,11 @@ destroy() {
     printf "DROP DATABASE ${db};" > "${QUERY}"
     $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}") < "${QUERY}" 2>&1 | tee "${RESULT}" > /dev/null
 
-    debug "    SQL Query:\n$(cat ${QUERY})"
+    debug "    SQL Query:"
+    debug "$(cat ${QUERY})"
     rm "${QUERY}" 
-    debug "    Result:\n$(cat ${RESULT})"
+    debug "    Result:"
+    debug "$(cat ${RESULT})"
 
     if [[ $(egrep ^ERROR "${RESULT}") ]]; then
         rm "${RESULT}"
@@ -580,9 +584,11 @@ create_database () {
 
         $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
 
-        debug "    SQL query:\n$(cat ${QUERY})"
+        debug "    SQL query:"
+        debug "$(cat ${QUERY})"
         rm "${QUERY}"
-        debug "    Result: \n$(cat ${RESULT})"
+        debug "    Result:"
+        debug "$(cat ${RESULT})"
 
         if [[ $(egrep ^ERROR "${RESULT}") ]]; then
             rm "${RESULT}"
