@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# THIS SCRIPT CURRENTLY DOES NOT WORK.
-# -- Currently rewriting to implement new options.
+# THIS SCRIPT CURRENTLY DOES NOT WORK--completely.
+# -- It seems to work fine if you have a default install:
+#    i.e. mysql, localhost, with root local login;
+#    but not if you pass a mysql admin.
 
 # TODO
 # ===========
@@ -20,11 +22,17 @@
 # [  done  ] read-in settings from file
 # [  done  ] destroy - use configs from file to destroy
 # ==========
-# [  100%  ] - v0.14.0-rc
-
+# [  100%  ] - done, at v0.14.0-rc
+# ==========
+#    BUGS   
+# ==========
+# [  done  ] functionality to ask user for mysql password does not seem to work
+# [  done  ] mysql check for creating database does not seem to work
+# ==========
+# [  100%  ] - v0.14.2
 
 # This script is versioned with Semantic Versioning. https://semver.org
-readonly VERSION="0.14.0-rc"
+readonly VERSION="0.14.2"
 # Errors
 readonly ERR_UNK_OPT="64"
 readonly ERR_TOO_MANY_ARGS="65"
@@ -49,8 +57,10 @@ readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_SRV_DIR="/srv/www/wp-content"
 readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
-readonly PASSWD_GEN="[{%+-./:=_}]0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+readonly PASSWD_GEN="+-./:=_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 readonly TAGLINE="# Created by $0"
+readonly QUERY="/tmp/sql"
+readonly RESULT="/tmp/result"
 # Colors
 readonly ANSI_RED="\033[1;31m"
 readonly ANSI_CLEAR="\033[0m"
@@ -170,19 +180,26 @@ check_if_existing () {
     fi
 
     debug "...attempting to connect to database at ${host}:${port}"
-    printf "show databases;" > tmp.sql
-    $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
-    if [[ $(egrep ^ERROR tmp.result) ]]; then
-        debug "$(cat tmp.result)"
-        rm -rf tmp.sql tmp.result
+
+    printf "show databases;" > "${QUERY}"
+
+    mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}" < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
+
+    debug "    SQL Query:"
+    while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${QUERY}"
+    rm "${QUERY}" 
+    debug "    Result:"
+    while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${RESULT}"
+
+    if [[ $(egrep ^ERROR "${RESULT}") ]]; then
+        rm "${RESULT}"
         finish "${ERR_MYSQL_ERROR}" "mysql query failed when checking for database - check creds"
     fi
-    rm tmp.sql
 
     debug "...testing if database '${db}' is in results"
-    if [[ $(egrep ^${db}$ tmp.result) ]]; then
+    if [[ $(egrep ^"${db}"$ "${RESULT}") ]]; then
         if [[ ! "${FORCE}" ]]; then
-            rm tmp.result
+        rm "${RESULT}"
             finish "${ERR_DB_EXISTS}" "database '${db}' already exists; -f to force"
         else
             debug "...database '${db}' exists, but force is set; make sure it is empty"
@@ -191,7 +208,7 @@ check_if_existing () {
     else
         debug "...not found"
     fi
-    rm tmp.result
+    rm "${RESULT}"
 
     debug "...testing if content directory ${WP_SRV_DIR}/${domain} exists"
     if [[ -d "${WP_SRV_DIR}/${domain}" ]]; then
@@ -222,7 +239,9 @@ backup () {
     mkdir "${domain}-bak"
 
     debug "...dumping database ${db} for ${domain}"
-    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" "${dump}") 2>&1 | tee "${backupfile}" >/dev/null
+    # echo "MYSQL User ${user}"
+    # echo "Use password: ${pass}"
+    mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" "${dump}" 2>&1 | tee "${backupfile}" >/dev/null
     if [[ $(egrep ^ERROR ${backupfile}) ]]; then
         rm -rf "${domain}-bak"
         finish "${ERR_MYSQL_ERROR}" "mysqldump failed - check creds and database"
@@ -259,13 +278,20 @@ destroy() {
     fi
 
     debug "...dropping database ${db}"
-    printf "DROP DATABASE ${db};" > /tmp/dropfile
-    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}") < /tmp/dropfile 2>&1 | tee tmp.result > /dev/null
-    if [[ $(egrep ^ERROR tmp.result) ]]; then
-        rm /tmp/dropfile tmp.result
+    printf "DROP DATABASE ${db};" > "${QUERY}"
+    mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" < "${QUERY}" 2>&1 | tee "${RESULT}" > /dev/null
+
+    debug "    SQL Query:"
+    debug "$(cat ${QUERY})"
+    rm "${QUERY}" 
+    debug "    Result:"
+    debug "$(cat ${RESULT})"
+
+    if [[ $(egrep ^ERROR "${RESULT}") ]]; then
+        rm "${RESULT}"
         finish "${ERR_MYSQL_ERROR}" "mysql drop failed - check creds and database"
     fi
-    rm -rf /tmp/dropfile tmp.result
+    rm -rf "${RESULT}"
     echo "Database ${db} dropped; remove the user ${user} from database if you wish."
 
     debug "...removing config ${cfgfile}"
@@ -361,7 +387,6 @@ read_config () {
     done < "${cfgfile}"
 }
 
-
 mysql_cmd () {
     # call like:
     # $(mysql_cmd localhost 3306 mysql root some_password)
@@ -379,17 +404,18 @@ mysql_cmd () {
     if [[ "${db}" == "-D none" || "${db}" == "-D " ]]; then unset db; fi
     if [[ "${user}" == "-u none" || "${user}" == "-u " ]]; then unset user; fi
     if [[ "${pass}" == "-pnone" || "${pass}" == "-p" ]]; then unset pass; fi
-    if [[ "${pass}" == "-pask" ]]; then echo "MYSQL User ${user}"; pass="-p "; fi
+    if [[ "${pass}" == "-pask" ]]; then pass="-p "; fi
 
     if [[ "${dump}" ]]; then
         cmd="${MYSQLDUMP} --single-transaction"
         db=$(echo ${db} | sed 's/-D //g')
     fi
 
-    debug "mysql_cmd: given opts: $@"
-    debug "cmd=${cmd} host=${host} port=${port} user=${user} pass=${pass} db=${db} dump=${dump}"
+    debug "    mysql_cmd: given opts: $@"
+    debug "    vars: cmd=${cmd} host=${host} port=${port} user=${user} pass=${pass} db=${db} dump=${dump}"
+    debug "    mysql cmd: ${cmd} ${host} ${port} ${user} ${pass} ${db}"
 
-    printf "${cmd} ${host} ${port} ${user} ${pass} ${db}" 
+    ${cmd} ${host} ${port} ${user} ${pass} ${db} 
 }
 
 set_wp_name () {
@@ -552,19 +578,25 @@ create_database () {
 
         debug "...attempting to create database ${db} at ${host}:${port}"
 
-        echo "CREATE DATABASE ${db};" > tmp.sql
-        echo "GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER \
-                ON ${db}.* TO '${wp_user}'@'${host}' IDENTIFIED BY '${wp_pass}';" >> tmp.sql
-        echo "FLUSH PRIVILEGES;" >> tmp.sql
+        echo "CREATE DATABASE ${db};" > "${QUERY}"
+        echo "GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER" >> "${QUERY}"
+        echo "ON ${db}.* TO '${wp_user}'@'${host}'" >> "${QUERY}"
+        echo "IDENTIFIED BY '${wp_pass}';" >> "${QUERY}"
+        echo "FLUSH PRIVILEGES;" >> "${QUERY}"
 
-        $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
-        if [[ $(egrep ^ERROR tmp.result) ]]; then
-            debug "$(cat tmp.sql)"
-            debug "$(cat tmp.result)"
-            rm -rf tmp.sql tmp.result
+        mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}" < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
+
+        debug "    SQL query:"
+        debug "$(cat ${QUERY})"
+        rm "${QUERY}"
+        debug "    Result:"
+        debug "$(cat ${RESULT})"
+
+        if [[ $(egrep ^ERROR "${RESULT}") ]]; then
+            rm "${RESULT}"
             finish "${ERR_MYSQL_ERROR}" "mysql query failed when creating database - check creds"
         fi
-        rm tmp.sql tmp.result
+        rm "${RESULT}"
         echo "Database '${db}' created."
     else
         echo "Database '${db}' exists; force is set. You should make sure it's empty." >&2
