@@ -551,9 +551,9 @@ create_database () {
 
         debug "...attempting to create database ${db} at ${host}:${port}"
 
-        echo "CREATE DATABASE ${db};" > tmp.sql
+        echo "CREATE DATABASE '${db}';" > tmp.sql
         echo "GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER \
-                ON ${db}.* TO '${wp_user}'@'${host}' IDENTIFIED BY '${wp_pass}';" >> tmp.sql
+                ON '${db}'.* TO '${wp_user}'@'${host}' IDENTIFIED BY '${wp_pass}';" >> tmp.sql
         echo "FLUSH PRIVILEGES;" >> tmp.sql
 
         $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
