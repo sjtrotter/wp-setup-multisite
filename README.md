@@ -17,7 +17,7 @@ the things you already installed, like plugins and themes. (Not a big deal.)
 
 ```bash
 setup-multisite [-h|-d|-b] [-v] [-f] [-n NAME][-u USER][-p PASS]
-        [-N HOST][-U USER][-P PASS]
+        [-N HOST][-T PORT][-U USER][-P PASS]
 
 Creates by default a Wordpress mysql configuration depending on required fully
 qualified domain name (FQDN).
@@ -38,6 +38,7 @@ Wordpress Settings: (auto-generated if not given)
 
 Database Settings: (assumed localhost/root/no password if not given)
     -N HOST     mysql server hostname (for non-standard database)
+    -T PORT     mysql server port (for non-standard database)
     -U USER     mysql admin username (for non-standard database)
     -P PASS     mysql admin password (for non-standard database)
 
