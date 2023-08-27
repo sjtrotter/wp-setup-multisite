@@ -521,7 +521,7 @@ main() {
 
     for key in DB_NAME; do
         wpvar="WP_${key}"
-        WP_CONTENT[${key}]=${!wpvar}
+        WP_CONTENT[${key}]="${!wpvar}"
     done
 
     debug "WP_CONTENT[DB_NAME]=${WP_CONTENT[DB_NAME]} WP_CONTENT[DB_USER]=${WP_CONTENT[DB_USER]}"
