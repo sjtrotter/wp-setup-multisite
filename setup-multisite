@@ -519,16 +519,16 @@ main() {
     debug "WP_DB_NAME=${WP_DB_NAME} WP_DB_USER=${WP_DB_USER} WP_DB_PASS=${WP_DB_PASS}"
     debug "MYSQL_HOST=${MYSQL_HOST} MYSQL_PORT=${MYSQL_PORT} MYSQL_USER=${MYSQL_USER} MYSQL_PASS=${MYSQL_PASS}"
 
-    # WP_CONTENT[DB_NAME]="${WP_DB_NAME}"
+    WP_CONTENT[DB_NAME]="${WP_DB_NAME}"
     # WP_CONTENT[DB_USER]=${WP_DB_USER}
     # WP_CONTENT[DB_PASSWORD]=${WP_DB_PASS}
     # WP_CONTENT[DB_HOST]=${MYSQL_HOST}
 
-    for key in "DB_NAME"; do
-        wpvar="WP_${key}"
-        debug "trying to set WP_CONTENT[${key}] to ${wpvar} value ${!wpvar}"
-        WP_CONTENT["${key}"]="${!wpvar}"
-    done
+    # for key in "DB_NAME"; do
+    #     wpvar="WP_${key}"
+    #     debug "trying to set WP_CONTENT[${key}] to ${wpvar} value ${!wpvar}"
+    #     WP_CONTENT["${key}"]="${!wpvar}"
+    # done
 
     # debug "WP_CONTENT[DB_NAME]=${WP_CONTENT[DB_NAME]} WP_CONTENT[DB_USER]=${WP_CONTENT[DB_USER]}"
     # debug "WP_CONTENT[DB_PASSWORD]=${WP_CONTENT[DB_PASSWORD]} WP_CONTENT[DB_HOST]=${WP_CONTENT[DB_HOST]}"
