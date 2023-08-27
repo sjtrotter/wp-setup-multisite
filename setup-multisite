@@ -534,7 +534,10 @@ main() {
     # debug "WP_CONTENT[DB_PASSWORD]=${WP_CONTENT[DB_PASSWORD]} WP_CONTENT[DB_HOST]=${WP_CONTENT[DB_HOST]}"
 
     debug "${WP_CONTENT[@]}"
-
+for key in ${!example_array[@]}
+do
+  debug "${key}, ${example_array[${key}]}"
+done
 
     DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
 
