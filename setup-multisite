@@ -521,6 +521,7 @@ main() {
 
     for key in DB_NAME; do
         wpvar="WP_${key}"
+        debug "trying to set WP_CONTENT[${key}] to ${wpvar} value ${!wpvar}"
         WP_CONTENT[${key}]="${!wpvar}"
     done
 
