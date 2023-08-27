@@ -239,6 +239,7 @@ check_if_existing () {
     fi
     rm tmp.sql
 
+    debug "...testing if ${db} is in results"
     if [[ $(egrep ^${db}$ tmp.result) ]]; then
         if [[ ! "${FORCE}" ]]; then
             rm tmp.result
