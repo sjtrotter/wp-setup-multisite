@@ -255,9 +255,9 @@ check_if_existing () {
             finish "${ERR_DB_EXISTS}" "database already exists"
         else
             echo "database ${db} exists, but force is set. you should make sure it's empty." >&2
-            rm tmp.result
         fi
     fi
+    rm tmp.result
 }
 
 create_config () {
