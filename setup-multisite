@@ -219,8 +219,8 @@ check_if_existing () {
     local host="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f1)"
     local port="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f2)"
     local db="${WP_CONFIG[DB_NAME]}"
-    local user="${WP_CONFIG[DB_USER]}"
-    local pass="${WP_CONFIG[DB_PASSWORD]}"
+    local user="${MYSQL_USER}"
+    local pass="${MYSQL_PASS}"
     if [[ "${host}" == "${port}" ]]; then port="none"; fi
 
     if [[ -f "${cfgfile}" ]]; then
@@ -500,6 +500,11 @@ main() {
 
 # MYSQL_USER
 # MYSQL_PASS
+
+    WP_CONTENT['DB_NAME']=${WP_DB_NAME}
+    WP_CONTENT['DB_USER']=${WP_DB_USER}
+    WP_CONTENT['DB_PASSWORD']=${WP_DB_PASS}
+    WP_CONTENT['DB_HOST']=${MYSQL_HOST}
 
 
 
