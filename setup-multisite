@@ -519,7 +519,7 @@ main() {
     # WP_CONTENT[DB_PASSWORD]=${WP_DB_PASS}
     # WP_CONTENT[DB_HOST]=${MYSQL_HOST}
 
-    for key in DB_NAME; do
+    for key in "DB_NAME"; do
         wpvar="WP_${key}"
         debug "trying to set WP_CONTENT[${key}] to ${wpvar} value ${!wpvar}"
         WP_CONTENT[${key}]="${!wpvar}"
