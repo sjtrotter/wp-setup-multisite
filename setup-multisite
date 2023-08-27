@@ -385,6 +385,32 @@ read_config () {
     done < "${cfgfile}"
 }
 
+mysql_options () {
+    declare -n _mysql_opts="$1"
+    local host="-h $2"
+    local port="-P $3"
+    local db="-D $4"
+    local user="-u $5"
+    local pass="-p$6"
+
+    if [[ "${host}" == "-h none" || "${host}" == "-h " ]]; then unset host; fi
+    if [[ "${port}" == "-P none" || "${port}" == "-P " ]]; then unset port; fi
+    if [[ "${db}" == "-D none" || "${db}" == "-D " ]]; then unset db; fi
+    if [[ "${user}" == "-u none" || "${user}" == "-u " ]]; then unset user; fi
+    if [[ "${pass}" == "-pnone" || "${pass}" == "-p" ]]; then unset pass; fi
+    if [[ "${pass}" == "-pask" ]]; then echo "MYSQL User ${user}"; pass="-p "; fi
+
+    if [[ "${dump}" ]]; then
+        cmd="${MYSQLDUMP} --single-transaction"
+        db=$(echo ${db} | sed 's/-D //g')
+    fi
+
+    debug "    mysql_cmd: given opts: $@"
+    debug "    vars: cmd=${cmd} host=${host} port=${port} user=${user} pass=${pass} db=${db} dump=${dump}"
+    debug "    mysql cmd: ${cmd} ${host} ${port} ${user} ${pass} ${db}"
+
+    printf "${cmd} ${host} ${port} ${user} ${pass} ${db}" 
+}
 
 mysql_cmd () {
     # call like:
