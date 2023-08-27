@@ -97,7 +97,7 @@ cat <<EOF
 $0 [-h|-d|-b|-V] [-v] [-f] [-n NAME][-u USER][-p PASS]
         [-N HOST][-T PORT][-U USER][-P PASS]
 
-Creates by default a Wordpress mysql configuration depending on required fully
+Creates by default a Wordpress configuration depending on required fully
 qualified domain name (FQDN).
 
 Options:

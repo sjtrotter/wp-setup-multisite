@@ -19,7 +19,7 @@ the things you already installed, like plugins and themes. (Not a big deal.)
 setup-multisite [-h|-d|-b] [-v] [-f] [-n NAME][-u USER][-p PASS]
         [-N HOST][-T PORT][-U USER][-P PASS]
 
-Creates by default a Wordpress mysql configuration depending on required fully
+Creates by default a Wordpress configuration depending on required fully
 qualified domain name (FQDN).
 
 Options:
