@@ -239,7 +239,8 @@ backup () {
     mkdir "${domain}-bak"
 
     debug "...dumping database ${db} for ${domain}"
-    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" "${dump}") 2>&1 | tee "${backupfile}" >/dev/null
+    echo "Use password: ${pass}"
+    $(mysql_cmd "${host}" "${port}" "${db}" "${user}" "ask" "${dump}") 2>&1 | tee "${backupfile}" >/dev/null
     if [[ $(egrep ^ERROR ${backupfile}) ]]; then
         rm -rf "${domain}-bak"
         finish "${ERR_MYSQL_ERROR}" "mysqldump failed - check creds and database"
