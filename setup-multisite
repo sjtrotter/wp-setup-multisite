@@ -189,7 +189,7 @@ check_if_existing () {
     while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${QUERY}"
     rm "${QUERY}" 
     debug "    Result:"
-    while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${QUERY}"
+    while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${RESULT}"
 
     if [[ $(egrep ^ERROR "${RESULT}") ]]; then
         rm "${RESULT}"
