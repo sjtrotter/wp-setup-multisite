@@ -612,6 +612,7 @@ main() {
     set_mysql
     set_wp_secret
     set_wp_content_dir "${DOMAIN}"
+    if [[ "${MYSQL_USER}" && ! "${MYSQL_PASS}" ]]; then MYSQL_PASS="ask"; fi
     check_if_existing "${DOMAIN}"
     validate_config "create"
     create_config "${DOMAIN}"
