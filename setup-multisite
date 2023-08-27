@@ -49,7 +49,7 @@ readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_SRV_DIR="/srv/www/wp-content"
 readonly WP_ETC_DIR="/etc/wordpress"
 readonly FQDN_VALID="^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$"
-readonly PASSWD_GEN="[{%+-./:=@_}]0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+readonly PASSWD_GEN="[{%+-./:=_}]0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 readonly TAGLINE="# Created by $0"
 # Colors
 readonly ANSI_RED="\033[1;31m"
