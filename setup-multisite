@@ -36,12 +36,12 @@ readonly ERR_NO_WORDPRESS="70"
 readonly ERR_NO_MYSQL="71"
 readonly ERR_CONFIG_EXISTS="72"
 readonly ERR_MYSQL_SETTINGS_NOT_AVAILABLE="73"
-readonly ERR_MYSQL_USER_TOO_LONG="74"
-readonly ERR_MYSQL_DB_TOO_LONG="75"
-readonly ERR_MYSQL_INVALID_CHAR="76"
-readonly ERR_CONFIG_MISMATCH="77"
-readonly ERR_NO_SUCH_FILE="78"
-readonly ERR_DB_EXISTS="79"
+readonly ERR_MYSQL_LENGTH="74"
+readonly ERR_MYSQL_INVALID_CHAR="75"
+readonly ERR_CONFIG_MISMATCH="76"
+readonly ERR_NO_SUCH_FILE="77"
+readonly ERR_DB_EXISTS="78"
+readonly ERR_NO_NETCAT="79"
 # Script-specific constants
 readonly WP_CONTENT_DIR_ORIG="/var/lib/wordpress/wp-content"
 readonly WP_SRV_DIR="/srv/www/wp-content"
@@ -223,14 +223,18 @@ check_if_existing () {
     local pass="${MYSQL_PASS}"
     if [[ "${host}" == "${port}" ]]; then port="none"; fi
 
+    debug "...checking if ${cfgfile} exists"
     if [[ -f "${cfgfile}" ]]; then
         if [[ ! "${FORCE}" ]]; then
-            finish "$ERR_CONFIG_EXISTS" "config file already exists"
+            finish "$ERR_CONFIG_EXISTS" "config file already exists; -f to force"
         else
-            debug "...config exists, but force is set. will overwrite"
+            echo "Config ${cfgfile} exists, but force is set. Overwriting config."
         fi
+    else
+        debug "...not found"
     fi
 
+    debug "...attempting to connect to database at ${host}:${port}"
     printf "show databases;" > tmp.sql
     $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < tmp.sql 2>&1 | tee tmp.result >/dev/null
     if [[ $(egrep ^ERROR tmp.result) ]]; then
@@ -243,12 +247,27 @@ check_if_existing () {
     if [[ $(egrep ^${db}$ tmp.result) ]]; then
         if [[ ! "${FORCE}" ]]; then
             rm tmp.result
-            finish "${ERR_DB_EXISTS}" "database '${db}' already exists"
+            finish "${ERR_DB_EXISTS}" "database '${db}' already exists; -f to force"
         else
-            echo "database ${db} exists, but force is set. you should make sure it's empty." >&2
+            echo "Database '${db}' exists, but force is set. You should make sure it's empty." >&2
         fi
+    else
+        debug "...not found"
     fi
     rm tmp.result
+
+    debug "...testing if content directory ${WP_SRV_DIR}/${domain} exists"
+    if [[ -d "${WP_SRV_DIR}/${domain} "]]; then
+        if [[ ! "${FORCE}" ]]; then
+            finish "${ERR_SRV_DIR_EXISTS}" "content directory ${WP_SRV_DIR}/${domain} already exists"
+        else
+            echo "Content directory ${WP_SRV_DIR}/${domain} exists, but force is set. Removing directory."
+            rm -rf "${WP_SRV_DIR}/${domain}"
+        fi
+    else
+        debug "...not found"
+    fi
+    debug "checks complete"
 }
 
 create_config () {
@@ -329,7 +348,7 @@ destroy() {
         rm /tmp/dropfile tmp.result
         finish "${ERR_MYSQL_ERROR}" "mysql drop failed - check creds and database"
     fi
-    rm -rf /tmp/dropfile
+    rm -rf /tmp/dropfile tmp.result
 
     debug "...removing config ${cfgfile}"
     rm -rf "${cfgfile}"
@@ -393,14 +412,6 @@ parse_args () {
     fi
 }
 
-
-mksrvdir () {
-    local content_dir="$1"
-    if [[ ! -d "${WP_SRV_DIR}" ]]; then mkdir -p "${WP_SRV_DIR}"; fi
-    cp -r "${WP_CONTENT_DIR_ORIG}" "${WP_SRV_DIR}/${content_dir}"    
-}
-
-
 read_config () {
     local domain="$1"
     cfgfile="${WP_ETC_DIR}/config-${domain}.php"
@@ -457,14 +468,14 @@ mysql_cmd () {
 }
 
 set_wp_name () {
-    # Set / Check WP Database
+    debug "checking and setting wordpress database name..."
     local name="$1"
     if [[ ! "${WP_DB_NAME}" ]] ; then
-        debug "wordpress database name not given..."
+        debug "...wordpress database name not given"
         WP_DB_NAME="${name}"
         debug "...generated from FQDN: ${WP_DB_NAME}"
     fi
-    if [[ "${#WP_DB_NAME}" -gt 64 ]]; then finish "${ERR_MYSQL_DB_TOO_LONG}" \
+    if [[ "${#WP_DB_NAME}" -gt 64 ]]; then finish "${ERR_MYSQL_LENGTH}" \
         "database name too long - consider setting with -n"; fi
     if [[ "${WP_DB_NAME}" =~ [^a-zA-Z0-9\-\_]+ ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
         "database name invalid character (not all alphanumeric)"; fi
@@ -473,92 +484,121 @@ set_wp_name () {
 }
 
 set_wp_user () {
-    # Set / Check WP User
+    debug "checking and setting wordpress database user..."
     local name="$1"
     if [[ ! "${WP_DB_USER}" ]]; then
-        debug "wordpress database user not given..."
+        debug "...wordpress database user not given"
         WP_DB_USER="${name}"
         debug "...generated from FQDN: ${WP_DB_USER}"
     fi
-    if [[ "${#WP_DB_USER}" -gt 32 ]]; then finish "${ERR_MYSQL_USER_TOO_LONG}" \
-        "database name too long - consider setting with -n"; fi
+    if [[ "${#WP_DB_USER}" -gt 32 ]]; then finish "${ERR_MYSQL_LENGTH}" \
+        "database username too long - consider setting with -n"; fi
     if [[ "${WP_DB_USER}" =~ [^a-zA-Z0-9\-\_]+ ]]; then finish "${ERR_MYSQL_INVALID_CHAR}" \
         "database user invalid character (not all alphanumeric)"; fi
     WP_CONFIG[DB_USER]="${WP_DB_USER}"
     debug "set WP_CONFIG[DB_USER] to ${WP_DB_USER}"
 }
 
+set_wp_pass () {
+    debug "checking and setting wordpress database password..."
+    if [[ ! "${WP_DB_PASS}" ]]; then
+        debug "...wordpress database password not given"
+        generate_password "pass" 12
+        WP_DB_PASS="${pass}"
+    fi
+    WP_CONFIG[DB_PASSWORD]="${WP_DB_PASS}"
+    debug "set WP_CONFIG[DB_PASSWORD] to ${WP_DB_PASS}"
+}
+
+set_wp_secret () {
+    debug "generating wordpress secret key"
+    generate_password "key" 50
+    WP_CONFIG[SECRET_KEY]="${key}"
+    debug "set WP_CONFIG[SECRET_KEY] to ${key}"
+}
+
+set_mysql () {
+    debug "checking and setting mysql host..."
+    if [[ ! "${MYSQL_HOST}" ]]; then
+        debug "...no host given, setting to default localhost"
+        MYSQL_HOST="localhost"
+    fi
+    if [[ "${MYSQL_PORT}" ]]; then
+        if [[ ! "${MYSQL_PORT}" =~ ^[0-9]*$ ]]; then
+            finish "${ERR_PORT_INVALID}" "given port '${MYSQL_PORT}' is not numeric"
+        elif [[ "${MYSQL_PORT}" -gt 65535 || "${MYSQL_PORT}" -lt 1 ]]; then
+            finish "${ERR_PORT_INVALID}" "given port '${MYSQL_PORT}' is out of range"
+        fi
+    else
+        debug "...no port given, setting to default 3306"
+        MYSQL_PORT="3306"
+    fi
+    
+    debug "...testing connection to mysql: ${MYSQL_HOST}:${MYSQL_PORT}"
+    $NC -zv "${MYSQL_HOST} ${MYSQL_PORT}" 2>&1 | tee tmp.result > /dev/null
+    if [[ ! $(egrep open$ tmp.result) ]]; then
+        rm tmp.result
+        finish "${ERR_MYSQL_CONN_REFUSED}" "cannot connect to mysql host '${MYSQL_HOST}' on port ${MYSQL_PORT}"
+    fi
+    rm tmp.result
+    WP_CONFIG[DB_HOST]="${MYSQL_HOST}:${MYSQL_PORT}"
+    debug "set WP_CONFIG[DB_HOST] to ${MYSQL_HOST}:${MYSQL_PORT}"
+}
+
+set_wp_content_dir () {
+    debug "creating and setting wordpress content directory..."
+    local domain="$1"
+    if [[ ! -d "${WP_SRV_DIR}" ]]; then
+        debug "...creating root content directory '${WP_SRV_DIR}'"
+        mkdir -p "${WP_SRV_DIR}"
+    fi
+    cp -r "${WP_CONTENT_DIR_ORIG}" "${WP_SRV_DIR}/${domain}"
+    debug "...created content directory ${WP_SRV_DIR}/${domain}"
+    WP_CONFIG[WP_CONTENT_DIR]="${WP_SRV_DIR}/${domain}"
+    debug "set WP_CONFIG[WP_CONTENT_DIR] to ${WP_SRV_DIR}/${domain}"
+}
+
 main() {
     parse_args "$@"
-
-# WP_CONFIG[key] = "${value}"
-# 'DB_NAME'      # WP_DB_NAME
-# 'DB_USER'      # WP_DB_USER
-# 'DB_PASSWORD   # WP_DB_PASS
-# 'DB_HOST'      # MYSQL_HOST:MYSQL_PORT
-# 'SECRET_KEY'
-# 'WP_CONTENT_DIR'
 
 # MYSQL_USER
 # MYSQL_PASS
 
-    debug "WP_DB_NAME=${WP_DB_NAME} WP_DB_USER=${WP_DB_USER} WP_DB_PASS=${WP_DB_PASS}"
-    debug "MYSQL_HOST=${MYSQL_HOST} MYSQL_PORT=${MYSQL_PORT} MYSQL_USER=${MYSQL_USER} MYSQL_PASS=${MYSQL_PASS}"
-
-    WP_CONFIG[DB_NAME]="${WP_DB_NAME}"
-    WP_CONTENT[DB_USER]=${WP_DB_USER}
-    WP_CONTENT[DB_PASSWORD]=${WP_DB_PASS}
-    WP_CONTENT[DB_HOST]=${MYSQL_HOST}
-
+    debug "passed options:"
+    debug "    WP_DB_NAME=${WP_DB_NAME} WP_DB_USER=${WP_DB_USER} WP_DB_PASS=${WP_DB_PASS}"
+    debug "    MYSQL_HOST=${MYSQL_HOST} MYSQL_PORT=${MYSQL_PORT}"
+    debug "    MYSQL_USER=${MYSQL_USER} MYSQL_PASS=${MYSQL_PASS}"
 
     DOMAIN=$(echo "${ARGS[0]}" | tr "[:upper:]" "[:lower:]")
 
-    # testing check_if_existing
-    check_if_existing "${DOMAIN}"
-    exit 0
-
-
-
-
     if [[ $BACKUP ]] ; then
+        echo "Backing up ${DOMAIN} config and database..."
         read_config "${DOMAIN}"
         backup "${DOMAIN}"
+        echo "Done."
         finish 0
     fi
 
     if [[ $DESTROY ]] ; then
+        echo "Destroying ${DOMAIN} config and database..."
         read_config "${DOMAIN}"
         destroy "${DOMAIN}"
+        echo "Done."
         finish 0
     fi
 
-
-
-
-
-
-
-
+    # If we're not destroying or backing up, we're creating.
+    echo "Creating ${DOMAIN} config and database..."
     local name=$(echo $DOMAIN | sed 's,\.,-,g')
+    set_wp_name "${name}"
+    set_wp_user "${name}"
+    set_wp_pass
+    set_mysql
+    set_wp_secret
+    set_wp_content_dir "${DOMAIN}"
+    check_if_existing "${DOMAIN}"
 
 
-
-    if [ ! $DB_HOST ]; then
-        DB_HOST="localhost"
-    fi
-
-
-
-
-    CONTENT="/var/lib/wordpress/wp-content"
-    CONFIG_FILE=/etc/wordpress/config-$DOMAIN.php
-
-
-    
-
-
-    checkforexistingsetup
-    create
  }
 
 
@@ -567,7 +607,8 @@ main() {
 if [[ "$(id -u)" != "0" ]]; then finish "${ERR_MUST_BE_ROOT}" "must be root"; fi
 if [[ ! -d "${WP_ETC_DIR}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_ETC_DIR} not found - is wordpress installed?"; fi
 if [[ ! -d "${WP_CONTENT_DIR_ORIG}" ]]; then finish "${ERR_NO_WORDPRESS}" "${WP_CONTENT_DIR_ORIG} not found - is wordpress installed?"; fi
-MYSQL=$(which mysql) || finish "${ERR_NO_MYSQL}" "mysql not found - is mysql-client installed?"
-MYSQLDUMP=$(which mysqldump) || finish "${ERR_NO_MYSQL}" "mysqldump not found - is mysql-client installed?"
+MYSQL=$(which mysql) || finish "${ERR_NO_MYSQL}" "mysql command not found - is mysql-client installed?"
+MYSQLDUMP=$(which mysqldump) || finish "${ERR_NO_MYSQL}" "mysqldump command not found - is mysql-client installed?"
+NC=$(which nc) || finish "${ERR_NO_NETCAT}" "nc command not found - is netcat installed?"
 
 if [[ $(basename $0) == "setup-multisite" ]]; then main "$@"; fi
