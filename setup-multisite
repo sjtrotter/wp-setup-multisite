@@ -183,7 +183,7 @@ check_if_existing () {
 
     printf "show databases;" > "${QUERY}"
 
-    $(mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}") < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
+    mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}" < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
 
     debug "    SQL Query:"
     while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${QUERY}"
