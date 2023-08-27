@@ -603,7 +603,7 @@ main() {
 
     # If we're not destroying or backing up, we're creating.
     echo "Creating ${DOMAIN} config and database..."
-    local name=$(echo $DOMAIN | sed 's,\.,-,g')
+    local name=$(echo $DOMAIN | sed 's,\.,,g;s,\-,,g')
     set_wp_name "${name}"
     set_wp_user "${name}"
     set_wp_pass
