@@ -537,7 +537,7 @@ set_mysql () {
     fi
     
     debug "...testing connection to mysql: ${MYSQL_HOST}:${MYSQL_PORT}"
-    $NC -zv "${MYSQL_HOST} ${MYSQL_PORT}" 2>&1 | tee tmp.result > /dev/null
+    $NC -zv "${MYSQL_HOST}" "${MYSQL_PORT}" 2>&1 | tee tmp.result > /dev/null
     if [[ ! $(egrep open$ tmp.result) ]]; then
         debug "$(cat tmp.result)"
         rm tmp.result
