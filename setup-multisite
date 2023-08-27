@@ -491,7 +491,7 @@ create_config () {
     local data="<?php\n"
     data="${data}${TAGLINE}\n"
     for key in ${!WP_CONFIG[@]}; do
-        data="${data}    define('${key}', '${WP_CONFIG[key]}');\n"
+        data="${data}    define('${key}', '${WP_CONFIG[${key}]}');\n"
     done
     data="${data}?>\n"
     printf "${data}" > "${cfgfile}"
@@ -614,8 +614,8 @@ main() {
     validate_config "create"
     create_config "${DOMAIN}"
     create_srvdir "${DOMAIN}"
-
-
+    create_database
+    echo "Done."
  }
 
 
