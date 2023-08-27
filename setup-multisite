@@ -218,7 +218,9 @@ check_if_existing () {
     local cfgfile="${WP_ETC_DIR}/config-${domain}.php"
     local host="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f1)"
     local port="$(echo ${WP_CONFIG[DB_HOST]} | cut -d ':' -f2)"
+    echo ${WP_CONFIG[DB_NAME]}
     local db="${WP_CONFIG[DB_NAME]}"
+    echo $db
     local user="${MYSQL_USER}"
     local pass="${MYSQL_PASS}"
     if [[ "${host}" == "${port}" ]]; then port="none"; fi
