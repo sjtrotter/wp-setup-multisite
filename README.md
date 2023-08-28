@@ -13,6 +13,18 @@ You should start with a clean Wordpress install to ensure nothing has been
 previously written in the wp-content directory; if not, you'll be copying 
 the things you already installed, like plugins and themes. (Not a big deal.)
 
+## Known-good Setup
+This script has been tested on a fresh debian install; 
+it works with the following setup:
+- fresh install of wordpress
+- fresh install of mariadb-server, after running `sudo mysql-secure-installation'
+Running this script afterward will create the wordpress config and 
+database for you as well as a separate server directory.
+
+I believe that with a more complicated setup (like, a separate database server) 
+that this script may not work as intended. If you have a setup like that, 
+please submit an issue so we can track bugfixes!
+
 ## Usage
 
 ```bash
