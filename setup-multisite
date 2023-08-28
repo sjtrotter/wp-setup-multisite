@@ -284,10 +284,10 @@ destroy() {
     mysql_cmd "${host}" "${port}" "${db}" "${user}" "${pass}" < "${QUERY}" 2>&1 | tee "${RESULT}" > /dev/null
 
     debug "    SQL Query:"
-    debug "$(cat ${QUERY})"
+    while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${QUERY}"
     rm "${QUERY}" 
     debug "    Result:"
-    debug "$(cat ${RESULT})"
+    while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${RESULT}"
 
     if [[ $(egrep ^ERROR "${RESULT}") ]]; then
         rm "${RESULT}"
@@ -592,11 +592,11 @@ create_database () {
 
         mysql_cmd "${host}" "${port}" "none" "${user}" "${pass}" < "${QUERY}" 2>&1 | tee "${RESULT}" >/dev/null
 
-        debug "    SQL query:"
-        debug "$(cat ${QUERY})"
-        rm "${QUERY}"
+        debug "    SQL Query:"
+        while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${QUERY}"
+        rm "${QUERY}" 
         debug "    Result:"
-        debug "$(cat ${RESULT})"
+        while read -r line || [[ -n "$line" ]]; do debug "  ${line}"; done < "${RESULT}"
 
         if [[ $(egrep ^ERROR "${RESULT}") ]]; then
             rm "${RESULT}"
