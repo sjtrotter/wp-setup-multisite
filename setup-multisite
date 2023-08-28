@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-# THIS SCRIPT CURRENTLY DOES NOT WORK--completely.
-# -- It seems to work fine if you have a default install:
-#    i.e. mysql, localhost, with root local login;
-#    but not if you pass a mysql admin.
+# This script has been tested on a fresh debian install;
+# it works with the following setup:
+# - fresh install of wordpress
+# - fresh install of mariadb-server, after running `sudo mysql-secure-installation'
+# Running this script afterward will create the wordpress config and
+# database for you as well as a separate server directory.
 
 # TODO
 # ===========
@@ -420,7 +422,9 @@ mysql_cmd () {
 
 set_wp_name () {
     debug "checking and setting wordpress database name..."
-    local name="$1"
+    local domain="$1"
+    local name=$(echo "${domain}" | sed 's,\.,\-,g')
+
     if [[ ! "${WP_DB_NAME}" ]] ; then
         debug "...wordpress database name not given"
         WP_DB_NAME="${name}"
@@ -436,7 +440,9 @@ set_wp_name () {
 
 set_wp_user () {
     debug "checking and setting wordpress database user..."
-    local name="$1"
+    local domain="$1"
+    local name=$(echo "${domain}" | sed 's,\.,\_,g')
+
     if [[ ! "${WP_DB_USER}" ]]; then
         debug "...wordpress database user not given"
         WP_DB_USER="${name}"
@@ -637,9 +643,8 @@ main() {
 
     # If we're not destroying or backing up, we're creating.
     echo "Creating ${DOMAIN} config and database..."
-    local name=$(echo $DOMAIN | sed 's,\.,,g;s,\-,,g')
-    set_wp_name "${name}"
-    set_wp_user "${name}"
+    set_wp_name "${DOMAIN}"
+    set_wp_user "${DOMAIN}"
     set_wp_pass
     set_mysql
     set_wp_secret
