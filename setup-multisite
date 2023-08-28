@@ -423,7 +423,7 @@ mysql_cmd () {
 set_wp_name () {
     debug "checking and setting wordpress database name..."
     local domain="$1"
-    local name=$(echo "${domain}" | sed 's,\.,\-,g')
+    local name=$(echo "${domain}" | sed 's,\.,\_,g')
 
     if [[ ! "${WP_DB_NAME}" ]] ; then
         debug "...wordpress database name not given"
@@ -441,7 +441,7 @@ set_wp_name () {
 set_wp_user () {
     debug "checking and setting wordpress database user..."
     local domain="$1"
-    local name=$(echo "${domain}" | sed 's,\.,\_,g')
+    local name=$(echo "${domain}" | sed 's,\.,\-,g')
 
     if [[ ! "${WP_DB_USER}" ]]; then
         debug "...wordpress database user not given"
