@@ -1,3 +1,9 @@
+-- this doesn't support edge cases and honestly is kinda hacky.
+ I found that the debian implementation of wordpress was .. weird.
+
+So I used RockyLinux instead.
+ Please use at your own risk.
+
 # wp-setup-multisite
 A helper script to assist with a multisite wordpress setup.
 
